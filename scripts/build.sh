@@ -9,7 +9,7 @@ if ! command -v rustup >/dev/null 2>&1; then
   command -v curl >/dev/null 2>&1 || { echo "curl is required to install rustup" >&2; exit 1; }
   installer=$(mktemp "${TMPDIR:-/tmp}/rustup-init.XXXXXX")
   trap 'rm -f "$installer"' EXIT
-  curl -fsSL --proto '=https' --tlsv1.2 https://rustup.rs -o "$installer"
+  curl -fsSL --proto '=https' --tlsv1.2 https://sh.rustup.rs -o "$installer"
   chmod +x "$installer"
   "$installer" -y --default-toolchain none
   rm -f "$installer"
@@ -29,7 +29,19 @@ rustup component add rust-src --toolchain "$TOOLCHAIN"
 rustup target add wasm32-unknown-unknown --toolchain "$TOOLCHAIN"
 
 if ! command -v wasm-pack >/dev/null 2>&1; then
-  cargo "+$TOOLCHAIN" install wasm-pack --locked
+  case "$(uname -s):$(uname -m)" in
+    Linux:x86_64) ;;
+    *) echo "Prebuilt wasm-pack installer supports Linux x86_64 only" >&2; exit 1 ;;
+  esac
+  WASM_PACK_VERSION=0.15.1
+  tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/wasm-pack.XXXXXX")
+  trap 'rm -rf "$tmpdir"' EXIT
+  archive="wasm-pack-v${WASM_PACK_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+  curl -fsSL "https://github.com/wasm-bindgen/wasm-pack/releases/download/v${WASM_PACK_VERSION}/${archive}" -o "$tmpdir/$archive"
+  tar -xzf "$tmpdir/$archive" -C "$tmpdir"
+  install -m 0755 "$tmpdir/wasm-pack-v${WASM_PACK_VERSION}-x86_64-unknown-linux-musl/wasm-pack" "$HOME/.cargo/bin/wasm-pack"
+  rm -rf "$tmpdir"
+  trap - EXIT
 fi
 command -v wasm-pack >/dev/null 2>&1 || { echo "wasm-pack installation failed" >&2; exit 1; }
 
