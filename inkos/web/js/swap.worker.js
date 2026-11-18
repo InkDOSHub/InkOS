@@ -20,7 +20,7 @@ function getSize(handle) { return typeof handle.getSize === "function" ? handle.
 self.onmessage = async ({ data }) => {
   if (data.type === "init") {
     memory = data.memory;
-    control = new Int32Array(memory.buffer);
+    control = new Int32Array(data.control || memory.buffer);
     await openOPFSFiles();
     postMessage({ type: "ready", swapSize: getSize(swapHandle), diskSize: getSize(diskHandle) });
     return;
