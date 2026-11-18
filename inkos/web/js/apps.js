@@ -33,7 +33,7 @@ export function launchApp(app, desktopEl) {
     return;
   }
 
-  const existing = document.querySelector(`#win-${app.id}`);
+  const existing = document.querySelector("#win-" + app.id);
   if (existing) {
     existing.hidden = false;
     existing.style.zIndex = String(Date.now() % 100000);
@@ -41,7 +41,7 @@ export function launchApp(app, desktopEl) {
   }
 
   const win = document.createElement("section");
-  win.id = `win-${app.id}`;
+  win.id = "win-" + app.id;
   win.className = "window";
   win.style.cssText = "top:56px;left:16px;right:16px;max-width:720px;margin:auto;z-index:50;";
 
@@ -77,7 +77,7 @@ export function launchApp(app, desktopEl) {
       const w = await fh.createWritable();
       await w.write(editor.value);
       await w.close();
-      status.textContent = `Salvo em OPFS: ${fname.value} (${editor.value.length} bytes)`;
+      status.textContent = "Salvo em OPFS: " + fname.value + " (" + editor.value.length + " bytes)";
     };
     body.querySelector(".btn-load").onclick = async () => {
       if (!fname.value) return;
@@ -85,9 +85,9 @@ export function launchApp(app, desktopEl) {
         const root = await navigator.storage.getDirectory();
         const fh = await root.getFileHandle(fname.value);
         editor.value = await (await fh.getFile()).text();
-        status.textContent = `Carregado de OPFS: ${fname.value}`;
+        status.textContent = "Carregado de OPFS: " + fname.value;
       } catch (e) {
-        status.textContent = `Erro: ${e.message}`;
+        status.textContent = "Erro: " + e.message;
       }
     };
   } else if (app.id === "inksoc") {
@@ -107,7 +107,7 @@ export function launchApp(app, desktopEl) {
       <div class="preview" style="margin-top:8px;"></div>
     `;
     body.querySelector(".local-file").onchange = (e) => {
-      const file = e.target.files?.[0];
+      const file = e.target.files?.item(0);
       if (!file) return;
       const url = URL.createObjectURL(file);
       const prev = body.querySelector(".preview");
