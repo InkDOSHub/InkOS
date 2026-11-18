@@ -1,13 +1,7 @@
 export class SessionManager {
   async deriveKey(password, salt) {
     const enc = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-      "raw",
-      enc.encode(password),
-      "PBKDF2",
-      false,
-      ["deriveKey"]
-    );
+    const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
     return crypto.subtle.deriveKey(
       { name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" },
       keyMaterial,
@@ -31,14 +25,7 @@ export class SessionManager {
       }
     }
 
-    const payload = new TextEncoder().encode(
-      JSON.stringify({
-        ts: Date.now(),
-        ramSample: Array.from(ramSnapshot.slice(0, 16384)),
-        files
-      })
-    );
-
+    const payload = new TextEncoder().encode(JSON.stringify({ ts: Date.now(), ramSample: Array.from(ramSnapshot.slice(0, 16384)), files }));
     const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payload));
     const out = new Uint8Array(16 + 12 + cipher.length);
     out.set(salt, 0);
