@@ -3,7 +3,26 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-command -v wasm-pack >/dev/null 2>&1 || { echo "wasm-pack is required" >&2; exit 1; }
+
+if ! command -v rustup >/dev/null 2>&1; then
+  command -v curl >/dev/null 2>&1 || { echo "curl is required to install rustup" >&2; exit 1; }
+  curl --proto '=https' --tlsv1.2 -sSf https://rustup.rs | sh -s -- -y
+fi
+
+[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+export PATH="$HOME/.cargo/bin:$PATH"
+command -v rustup >/dev/null 2>&1 || { echo "rustup installation failed" >&2; exit 1; }
+
+# Running rustup from the repository honors rust-toolchain.toml and installs its pinned channel.
+TOOLCHAIN="$(rustup show active-toolchain | awk '{print $1}')"
+rustup component add rust-src --toolchain "$TOOLCHAIN"
+rustup target add wasm32-unknown-unknown --toolchain "$TOOLCHAIN"
+
+if ! command -v wasm-pack >/dev/null 2>&1; then
+  cargo install wasm-pack --locked
+  export PATH="$HOME/.cargo/bin:$PATH"
+fi
+command -v wasm-pack >/dev/null 2>&1 || { echo "wasm-pack installation failed" >&2; exit 1; }
 
 export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-feature=+atomics,+bulk-memory,+mutable-globals"
 wasm-pack build inkos --target web --release
