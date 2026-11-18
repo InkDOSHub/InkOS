@@ -1,9 +1,5 @@
-[workspace]
-members = ["inkos"]
-resolver = "2"
+[build]
+target = "wasm32-unknown-unknown"
 
-[profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
-panic = "abort"
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"]
