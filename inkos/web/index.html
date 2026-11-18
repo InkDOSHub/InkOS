@@ -1,18 +1,53 @@
-<html><body><script type="module">
-import init, { InkSoc } from "./pkg/inkos.js";
-await init();
-
-const memory = new WebAssembly.Memory({
-  initial: 512 * 1024 * 1024 / 65536,
-  maximum: 1024 * 1024 * 1024 / 65536,
-  shared: true,
-});
-
-if (!(memory.buffer instanceof SharedArrayBuffer)) {
-  throw new Error("SharedArrayBuffer is required");
-}
-
-const soc = new InkSoc();
-soc.map_memory(memory.buffer);
-window.inkSoc = { memory, soc };
-</script></body></html>
+<!doctype html>
+<html lang="en" data-theme="mocha">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#1e1e2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>InkOS</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./theme/catppuccin.css">
+</head>
+<body>
+  <svg class="icon-library" aria-hidden="true"><use href="./icons.svg#i-desktop"></use></svg>
+  <header class="topbar"><strong>InkOS</strong><span id="clock"></span><button id="theme-toggle" aria-label="Toggle light and dark theme">◐</button></header>
+  <main id="desktop" class="desktop" aria-label="InkOS desktop">
+    <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
+    <section class="window" id="terminal-window" aria-label="Terminal window">
+      <header class="window-title" data-drag-handle><svg><use href="./icons.svg#i-terminal"></use></svg><span>Terminal</span><button id="terminal-close" aria-label="Close terminal">×</button></header>
+      <div id="terminal-output" class="terminal-output" role="log" aria-live="polite">InkOS TTY bridge — waiting for InkSoC worker.</div>
+      <form id="terminal-form"><label for="terminal-input">$</label><input id="terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Terminal input"></form>
+    </section>
+  </main>
+  <aside id="modifier-bar" class="modifier-bar" aria-label="Keyboard modifiers">
+    <button data-key="Escape">Esc</button><button data-key="Tab">Tab</button><button data-key="Control">Ctrl</button><button data-key="Alt">Opt</button><button data-key="Meta">Cmd</button>
+    <button data-key="ArrowLeft" aria-label="Left arrow">←</button><button data-key="ArrowDown" aria-label="Down arrow">↓</button><button data-key="ArrowUp" aria-label="Up arrow">↑</button><button data-key="ArrowRight" aria-label="Right arrow">→</button>
+  </aside>
+  <nav class="dock"><button id="open-terminal"><svg><use href="./icons.svg#i-terminal"></use></svg><span>Terminal</span></button><button id="fullscreen-button">Fullscreen</button></nav>
+  <script type="module">
+    import init, { InkSoc } from "./pkg/inkos.js";
+    import { WindowManager } from "./js/wm.js";
+    import { MobileInput } from "./js/mobile.js";
+    import { Terminal } from "./js/terminal.js";
+    await init();
+    const memory = new WebAssembly.Memory({ initial: 8192, maximum: 16384, shared: true });
+    const soc = new InkSoc();
+    soc.map_memory(memory.buffer);
+    const worker = new Worker("./js/swap.worker.js", { type: "module" });
+    const control = new SharedArrayBuffer(4096);
+    worker.postMessage({ type: "init", memory: { buffer: memory.buffer }, control });
+    window.inkOS = { memory, soc, worker };
+    const wm = new WindowManager(document.querySelector("#desktop"));
+    new MobileInput({ desktop: document.querySelector("#desktop"), framebuffer: document.querySelector("#framebuffer"), wm, worker });
+    new Terminal({ worker, output: document.querySelector("#terminal-output"), form: document.querySelector("#terminal-form"), input: document.querySelector("#terminal-input") });
+    document.querySelector("#theme-toggle").addEventListener("click", () => { document.documentElement.dataset.theme = document.documentElement.dataset.theme === "mocha" ? "latte" : "mocha"; });
+    document.querySelector("#open-terminal").addEventListener("click", () => document.querySelector("#terminal-window").hidden = false);
+    document.querySelector("#terminal-close").addEventListener("click", () => document.querySelector("#terminal-window").hidden = true);
+    document.querySelector("#fullscreen-button").addEventListener("click", () => document.querySelector("#framebuffer").requestFullscreen?.());
+    document.querySelector("#clock").textContent = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date());
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(console.error);
+  </script>
+</body>
+</html>
