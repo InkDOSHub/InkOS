@@ -1,62 +1,68 @@
-const ITERATIONS = 600_000;
+export class SessionManager {
+  async deriveKey(password, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      enc.encode(password),
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
 
-async function deriveKey(password, salt) {
-  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: ITERATIONS },
-    base,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
+  async suspendAndExport(password, ramSnapshot) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await this.deriveKey(password, salt);
 
-function concat(...parts) {
-  const length = parts.reduce((n, part) => n + part.byteLength, 0);
-  const out = new Uint8Array(length);
-  let pos = 0;
-  for (const part of parts) { out.set(new Uint8Array(part), pos); pos += part.byteLength; }
-  return out;
-}
+    const root = await navigator.storage.getDirectory();
+    const files = {};
+    for await (const [name, handle] of root.entries()) {
+      if (handle.kind === "file" && name !== "swap.bin") {
+        const buf = await (await handle.getFile()).arrayBuffer();
+        files[name] = Array.from(new Uint8Array(buf));
+      }
+    }
 
-export async function suspend({ password, memory, opfsRoot, exportFile = false }) {
-  if (!password) throw new Error("password required");
-  const ram = new Uint8Array(memory.buffer.slice(0));
-  const diskFile = await opfsRoot.getFileHandle("disk.img");
-  const disk = new Uint8Array(await (await diskFile.getFile()).arrayBuffer());
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(password, salt);
-  const plaintext = concat(ram, disk);
-  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
-  const header = new TextEncoder().encode(JSON.stringify({ format: "inkos", version: 1, ramBytes: ram.byteLength, iterations: ITERATIONS, saltBytes: 16, ivBytes: 12 }));
-  const blob = new Blob([Uint32Array.of(header.byteLength), header, salt, iv, new Uint8Array(encrypted)], { type: "application/octet-stream" });
-  if (!exportFile) return blob;
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob); link.download = "session.inkos"; link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  return blob;
-}
+    const payload = new TextEncoder().encode(
+      JSON.stringify({
+        ts: Date.now(),
+        ramSample: Array.from(ramSnapshot.slice(0, 16384)),
+        files
+      })
+    );
 
-export async function wake(password, file, { memory, opfsRoot }) {
-  if (!password) throw new Error("password required");
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const headerLength = view.getUint32(0, true);
-  const header = JSON.parse(new TextDecoder().decode(bytes.slice(4, 4 + headerLength)));
-  let pos = 4 + headerLength;
-  if (header.format !== "inkos") throw new Error("invalid .inkos file");
-  const salt = bytes.slice(pos, pos + header.saltBytes); pos += header.saltBytes;
-  const iv = bytes.slice(pos, pos + header.ivBytes); pos += header.ivBytes;
-  const key = await deriveKey(password, salt);
-  let plaintext;
-  try { plaintext = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, bytes.slice(pos))); }
-  catch (_) { throw new Error("invalid password or corrupted session"); }
-  if (plaintext.byteLength < header.ramBytes) throw new Error("corrupted session");
-  new Uint8Array(memory.buffer).set(plaintext.slice(0, header.ramBytes));
-  const disk = plaintext.slice(header.ramBytes);
-  const diskHandle = await opfsRoot.getFileHandle("disk.img", { create: true });
-  const sync = await diskHandle.createSyncAccessHandle();
-  sync.truncate(0); sync.write(disk); sync.close();
-  return header;
+    const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payload));
+    const out = new Uint8Array(16 + 12 + cipher.length);
+    out.set(salt, 0);
+    out.set(iv, 16);
+    out.set(cipher, 28);
+    return new Blob([out], { type: "application/octet-stream" });
+  }
+
+  async wakeFromBlob(password, blob) {
+    const raw = new Uint8Array(await blob.arrayBuffer());
+    const salt = raw.slice(0, 16);
+    const iv = raw.slice(16, 28);
+    const cipher = raw.slice(28);
+    const key = await this.deriveKey(password, salt);
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+    const state = JSON.parse(new TextDecoder().decode(plain));
+
+    const root = await navigator.storage.getDirectory();
+    for (const [name, bytes] of Object.entries(state.files || {})) {
+      const fh = await root.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      await w.write(new Uint8Array(bytes));
+      await w.close();
+    }
+    return state;
+  }
 }
