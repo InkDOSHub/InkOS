@@ -1,0 +1,1 @@
+{"format":"InkOS WASM bundle","target":"web","rustFlags":"+atomics,+bulk-memory,+mutable-globals","rustCrate":"inkos/","worker":"web/js/swap.worker.js","session":"web/js/session.js"}

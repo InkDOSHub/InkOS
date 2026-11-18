@@ -1,0 +1,18 @@
+<html><body><script type="module">
+import init, { InkSoc } from "./pkg/inkos.js";
+await init();
+
+const memory = new WebAssembly.Memory({
+  initial: 512 * 1024 * 1024 / 65536,
+  maximum: 1024 * 1024 * 1024 / 65536,
+  shared: true,
+});
+
+if (!(memory.buffer instanceof SharedArrayBuffer)) {
+  throw new Error("SharedArrayBuffer is required");
+}
+
+const soc = new InkSoc();
+soc.map_memory(memory.buffer);
+window.inkSoc = { memory, soc };
+</script></body></html>

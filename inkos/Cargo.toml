@@ -1,0 +1,17 @@
+[package]
+name="inkos"
+version="0.1.0"
+edition="2021"
+license="MIT"
+
+[lib]
+crate-type=["cdylib","rlib"]
+
+[dependencies]
+wasm-bindgen="0.2"
+js-sys="0.3"
+wasm-encoder="0.221"
+
+[dependencies.web-sys]
+version="0.3"
+features=["console","DedicatedWorkerGlobalScope","Worker","MessageEvent","FileSystemDirectoryHandle","FileSystemFileHandle","FileSystemSyncAccessHandle","Blob"]
