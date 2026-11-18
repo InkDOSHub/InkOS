@@ -54,7 +54,7 @@ impl InkSoc {
         if data.length() as usize != PAGE_SIZE { return Err(JsValue::from_str("page must be exactly 64 KiB")); }
         let buffer = self.buffer.as_ref().ok_or_else(|| JsValue::from_str("memory not mapped"))?;
         if offset + PAGE_SIZE > buffer.byte_length() as usize { return Err(JsValue::from_str("page out of RAM")); }
-        Uint8Array::new(buffer).subarray(offset as u32, (offset + PAGE_SIZE) as u32).copy_from(data);
+Uint8Array::new(buffer).set(data, offset as u32);
         Ok(PAGE_SIZE)
     }
 
