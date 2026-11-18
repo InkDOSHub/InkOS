@@ -1,68 +1,189 @@
-export class SessionManager {
-  async deriveKey(password, salt) {
-    const enc = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-      "raw",
-      enc.encode(password),
-      "PBKDF2",
-      false,
-      ["deriveKey"]
-    );
-    return crypto.subtle.deriveKey(
-      { name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" },
-      keyMaterial,
-      { name: "AES-GCM", length: 256 },
-      false,
-      ["encrypt", "decrypt"]
-    );
-  }
+<!doctype html>
+<html lang="pt-BR" data-theme="mocha">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#1e1e2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>InkOS</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./theme/catppuccin.css">
+</head>
+<body>
+  <svg class="icon-library" aria-hidden="true"><use href="./icons.svg#i-desktop"></use></svg>
+  <header class="topbar">
+    <strong>InkOS 64-bit</strong>
+    <span id="isolation-badge" style="font-size:12px;opacity:.85"></span>
+    <span id="clock"></span>
+    <button id="theme-toggle" aria-label="Alternar tema claro e escuro">◐</button>
+  </header>
 
-  async suspendAndExport(password, ramSnapshot) {
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const key = await this.deriveKey(password, salt);
+  <main id="desktop" class="desktop" aria-label="InkOS desktop">
+    <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
 
-    const root = await navigator.storage.getDirectory();
-    const files = {};
-    for await (const [name, handle] of root.entries()) {
-      if (handle.kind === "file" && name !== "swap.bin") {
-        const buf = await (await handle.getFile()).arrayBuffer();
-        files[name] = Array.from(new Uint8Array(buf));
-      }
+    <section class="window" id="terminal-window" aria-label="Terminal window">
+      <header class="window-title" data-drag-handle>
+        <svg><use href="./icons.svg#i-terminal"></use></svg>
+        <span>Alpine Linux — InkShell</span>
+        <button id="terminal-close" aria-label="Fechar terminal">×</button>
+      </header>
+      <div id="terminal-output" class="terminal-output" role="log" aria-live="polite">Iniciando kernel InkSoC...</div>
+      <form id="terminal-form">
+        <label for="terminal-input">$</label>
+        <input id="terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Entrada do terminal">
+      </form>
+    </section>
+
+    <section class="window" id="launcher-window" hidden aria-label="Aplicativos InkOS">
+      <header class="window-title" data-drag-handle>
+        <svg><use href="./icons.svg#i-desktop"></use></svg>
+        <span>Aplicativos InkOS (25 Módulos Wasm)</span>
+        <button id="launcher-close" aria-label="Fechar aplicativos">×</button>
+      </header>
+      <div id="app-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:10px;padding:12px;max-height:55vh;overflow:auto;"></div>
+    </section>
+  </main>
+
+  <aside id="modifier-bar" class="modifier-bar" aria-label="Teclas modificadoras">
+    <button data-key="Escape">Esc</button>
+    <button data-key="Tab">Tab</button>
+    <button data-key="Control">Ctrl</button>
+    <button data-key="Alt">Opt</button>
+    <button data-key="Meta">Cmd</button>
+    <button data-key="ArrowLeft" aria-label="Seta esquerda">←</button>
+    <button data-key="ArrowDown" aria-label="Seta baixo">↓</button>
+    <button data-key="ArrowUp" aria-label="Seta cima">↑</button>
+    <button data-key="ArrowRight" aria-label="Seta direita">→</button>
+  </aside>
+
+  <nav class="dock">
+    <button id="open-apps"><svg><use href="./icons.svg#i-desktop"></use></svg><span>Apps</span></button>
+    <button id="open-terminal"><svg><use href="./icons.svg#i-terminal"></use></svg><span>Terminal</span></button>
+    <button id="run-bench"><span>InkBench</span></button>
+    <button id="session-btn"><span>Sessão</span></button>
+    <button id="wake-btn"><span>Despertar</span></button>
+    <button id="fullscreen-button"><span>Tela Cheia</span></button>
+  </nav>
+  <input type="file" id="wake-file" accept=".inkos" hidden>
+
+  <script type="module">
+    import init, { InkSoC } from "./pkg/inkos.js";
+    import { WindowManager } from "./js/wm.js";
+    import { MobileInput } from "./js/mobile.js";
+    import { Terminal } from "./js/terminal.js";
+
+    const desktopEl = document.querySelector("#desktop");
+    const out = document.querySelector("#terminal-output");
+    const badge = document.querySelector("#isolation-badge");
+    badge.textContent = window.crossOriginIsolated ? "SAB • JIT Ativo" : "Modo Compatibilidade";
+
+    try {
+      await init();
+      const pages = 8192; // 512 MiB RAM física fixa
+      const memory = new WebAssembly.Memory({ initial: pages, maximum: 16384, shared: true });
+      const soc = new InkSoC(pages);
+      soc.bind_shared_memory(memory.buffer);
+
+      const wasiMod = soc.emit_wasi_module();
+      await WebAssembly.compile(wasiMod);
+
+      const worker = new Worker("./js/swap.worker.js", { type: "module" });
+      const control = new SharedArrayBuffer(4096);
+      worker.postMessage({ type: "init", memory: { buffer: memory.buffer }, control });
+
+      window.inkOS = { memory, soc, worker };
+      out.textContent = `InkOS 64-bit Kernel Online (${(soc.ram_bytes() / 1048576).toFixed(0)} MiB RAM | OPFS Swap Pronto)\nAlpine Linux v3.20 (aarch64/wasm64) — digite 'help' ou 'uname -a'\n`;
+
+      const wm = new WindowManager(desktopEl);
+      new MobileInput({ desktop: desktopEl, framebuffer: document.querySelector("#framebuffer"), wm, worker });
+      new Terminal({ worker, output: out, form: document.querySelector("#terminal-form"), input: document.querySelector("#terminal-input") });
+
+      import("./js/apps.js").then(({ APPS, launchApp }) => {
+        const grid = document.querySelector("#app-grid");
+        if (!Array.isArray(APPS)) return;
+        APPS.forEach((app) => {
+          const btn = document.createElement("button");
+          btn.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border-radius:10px;border:1px solid var(--surface1,#45475a);background:var(--surface0,#313244);color:var(--text,#cdd6f4);cursor:pointer;";
+          btn.innerHTML = `<svg width="22" height="22"><use href="./icons.svg#${app.icon || "i-desktop"}"></use></svg><span style="font-size:12px">${app.name || app.id}</span>`;
+          btn.onclick = () => {
+            document.querySelector("#launcher-window").hidden = true;
+            if (typeof launchApp === "function") launchApp(app, desktopEl);
+          };
+          grid.appendChild(btn);
+        });
+      }).catch(() => {});
+
+      document.querySelector("#run-bench").addEventListener("click", async () => {
+        document.querySelector("#terminal-window").hidden = false;
+        out.textContent += "\n[InkBench] Executando suíte JIT Wasm + OPFS + GPU...";
+        try {
+          const benchMod = await import("./js/bench.js");
+          const fn = benchMod.runBenchmarks || benchMod.default;
+          if (typeof fn === "function") {
+            const res = await fn();
+            out.textContent += `\n[InkBench] Resultado: ${JSON.stringify(res, null, 2)}`;
+          }
+        } catch (err) {
+          out.textContent += `\n[InkBench] Erro: ${err.message}`;
+        }
+      });
+
+      document.querySelector("#session-btn").addEventListener("click", async () => {
+        const pwd = prompt("Senha para congelar e criptografar sessão (.inkos):");
+        if (!pwd) return;
+        document.querySelector("#terminal-window").hidden = false;
+        out.textContent += "\n[InkSoC Crypto] Derivando chave PBKDF2 + AES-GCM 256-bit...";
+        try {
+          const { SessionManager } = await import("./js/session.js");
+          const sm = new SessionManager();
+          const blob = await sm.suspendAndExport(pwd, new Uint8Array(memory.buffer.slice(0, 65536)));
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "sessao.inkos";
+          a.click();
+          out.textContent += "\n[InkSoC Crypto] Máquina suspensa e exportada (sessao.inkos).";
+        } catch (err) {
+          out.textContent += `\n[InkSoC Crypto] Erro: ${err.message}`;
+        }
+      });
+
+      const wakeInput = document.querySelector("#wake-file");
+      document.querySelector("#wake-btn").addEventListener("click", () => wakeInput.click());
+      wakeInput.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const pwd = prompt("Digite a senha para despertar a sessão (.inkos):");
+        if (!pwd) return;
+        document.querySelector("#terminal-window").hidden = false;
+        try {
+          const { SessionManager } = await import("./js/session.js");
+          const sm = new SessionManager();
+          const state = await sm.wakeFromBlob(pwd, file);
+          out.textContent += `\n[InkSoC Crypto] Sessão despertada (${Object.keys(state.files || {}).length} arquivos restaurados no OPFS).`;
+        } catch (err) {
+          out.textContent += `\n[InkSoC Crypto] Falha ao despertar (senha incorreta ou arquivo inválido).`;
+        }
+      });
+    } catch (e) {
+      out.textContent = `Falha no boot do InkSoC: ${e.message}`;
+      console.error(e);
     }
 
-    const payload = new TextEncoder().encode(
-      JSON.stringify({
-        ts: Date.now(),
-        ramSample: Array.from(ramSnapshot.slice(0, 16384)),
-        files
-      })
-    );
-
-    const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payload));
-    const out = new Uint8Array(16 + 12 + cipher.length);
-    out.set(salt, 0);
-    out.set(iv, 16);
-    out.set(cipher, 28);
-    return new Blob([out], { type: "application/octet-stream" });
-  }
-
-  async wakeFromBlob(password, blob) {
-    const raw = new Uint8Array(await blob.arrayBuffer());
-    const salt = raw.slice(0, 16);
-    const iv = raw.slice(16, 28);
-    const cipher = raw.slice(28);
-    const key = await this.deriveKey(password, salt);
-    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
-    const state = JSON.parse(new TextDecoder().decode(plain));
-
-    const root = await navigator.storage.getDirectory();
-    for (const [name, bytes] of Object.entries(state.files || {})) {
-      const fh = await root.getFileHandle(name, { create: true });
-      const w = await fh.createWritable();
-      await w.write(new Uint8Array(bytes));
-      await w.close();
-    }
-    return state;
-  }
-}
+    document.querySelector("#theme-toggle").addEventListener("click", () => {
+      document.documentElement.dataset.theme = document.documentElement.dataset.theme === "mocha" ? "latte" : "mocha";
+    });
+    document.querySelector("#open-apps").addEventListener("click", () => {
+      const win = document.querySelector("#launcher-window");
+      win.hidden = !win.hidden;
+    });
+    document.querySelector("#launcher-close").addEventListener("click", () => document.querySelector("#launcher-window").hidden = true);
+    document.querySelector("#open-terminal").addEventListener("click", () => document.querySelector("#terminal-window").hidden = false);
+    document.querySelector("#terminal-close").addEventListener("click", () => document.querySelector("#terminal-window").hidden = true);
+    document.querySelector("#fullscreen-button").addEventListener("click", () => desktopEl.requestFullscreen?.());
+    document.querySelector("#clock").textContent = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date());
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(console.error);
+  </script>
+</body>
+</html>
