@@ -1,10 +1,10 @@
 [workspace]
-members=["."]
-resolver="2"
+members = ["inkos"]
+resolver = "2"
 
 [profile.release]
-opt-level="z"
-lto=true
-codegen-units=1
-panic="abort"
-strip=true
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
