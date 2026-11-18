@@ -1,4 +1,3 @@
-/* Cross-origin isolation required for shared memory */
-/* https://github.com/InkDOSHub/InkOS */
-/* */
-/* Matches COOP/COEP and permits only same-origin resources. */
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

@@ -20,4 +20,7 @@ rm -rf dist
 mkdir -p dist/pkg
 cp -a inkos/web/. dist/
 cp -a inkos/pkg/. dist/pkg/
+[[ -f dist/_headers ]] || { echo "dist/_headers missing" >&2; exit 1; }
+grep -q '^  Cross-Origin-Opener-Policy: same-origin$' dist/_headers
+grep -q '^  Cross-Origin-Embedder-Policy: require-corp$' dist/_headers
 printf 'Built dist/ (%s files)\n' "$(find dist -type f | wc -l | tr -d ' ')"
