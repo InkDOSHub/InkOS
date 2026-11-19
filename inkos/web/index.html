@@ -11,8 +11,6 @@
   <link rel="stylesheet" href="./theme/catppuccin.css">
 </head>
 <body>
-  <svg class="icon-library" aria-hidden="true"><use href="./icons.svg#i-desktop"></use></svg>
-
   <header class="topbar" role="banner">
     <div class="topbar-left">
       <button id="ws-toggle" class="top-pill" type="button">Workspaces</button>
@@ -20,11 +18,11 @@
       <strong style="margin-left:4px;font-size:13px;">InkOS</strong>
     </div>
     <div class="topbar-center">
-      <span id="clock" style="font-weight:600;"></span>
+      <span id="clock" style="font-weight:600;">--:--</span>
     </div>
     <div class="topbar-right">
       <span id="isolation-badge" class="badge-iso"></span>
-      <button id="keys-toggle" class="top-pill" type="button" title="Teclas modificadoras">⌨</button>
+      <button id="keys-toggle" class="top-pill" type="button" title="Teclas modificadoras">Keys</button>
       <button id="theme-toggle" class="top-pill" type="button" aria-label="Alternar tema claro e escuro">◐</button>
     </div>
   </header>
@@ -73,17 +71,7 @@
     <nav id="dock" class="dock" aria-label="Dock de aplicativos"></nav>
   </div>
 
-  <input type="file" id="wake-file" accept=".inkos" hidden>
-
   <script type="module">
-    import { WindowManager } from "./js/wm.js";
-    import { bindWindowManager, registerNativeApp, openApp, closeApp, mountLauncher, syncTheme } from "./js/appload.js";
-    import { vfs } from "./js/vfs.js";
-    import { mountFinder } from "./js/apps/finder.js";
-    import { mountBrowser } from "./js/apps/browser.js";
-    import { mountShell } from "./js/apps/shell.js";
-    import { mountCmdExe } from "./js/apps/cmd-exe.js";
-
     const desktopEl = document.querySelector("#desktop");
     const dockEl = document.querySelector("#dock");
     const launcherWin = document.querySelector("#launcher-window");
@@ -92,18 +80,63 @@
     const badge = document.querySelector("#isolation-badge");
 
     badge.textContent = window.crossOriginIsolated ? "SAB • JIT Ativo" : "Modo Compatibilidade";
-    vfs.init().catch(console.error);
+
+    const svgIcon = (id, size = 20) =>
+      `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
+
+    // Relógio, tema, workspaces e teclas: ligados imediatamente sem depender de imports
+    const updateClock = () => {
+      document.querySelector("#clock").textContent = new Intl.DateTimeFormat(undefined, {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date());
+    };
+    updateClock();
+    setInterval(updateClock, 15000);
+
+    const wsRail = document.querySelector("#workspace-rail");
+    document.querySelector("#ws-toggle").addEventListener("click", () => {
+      wsRail.classList.toggle("open");
+    });
+
+    const modBar = document.querySelector("#modifier-bar");
+    document.querySelector("#keys-toggle").addEventListener("click", () => {
+      modBar.classList.toggle("open");
+    });
+    modBar.querySelectorAll("button[data-key]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const active = document.activeElement;
+        if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+          active.dispatchEvent(new KeyboardEvent("keydown", { key: btn.dataset.key, bubbles: true }));
+        }
+      });
+    });
+
+    // Carrega WM e appload com proteção contra erro
+    const [{ WindowManager }, appload] = await Promise.all([
+      import("./js/wm.js"),
+      import("./js/appload.js"),
+    ]);
+
+    let vfs = null;
+    try {
+      const vfsMod = await import("./js/vfs.js");
+      vfs = vfsMod.vfs;
+      await vfs.init();
+    } catch (e) {
+      console.warn("[InkOS] vfs.js ausente ou falhou:", e);
+    }
 
     let wm;
     const renderDock = (wins = []) => {
       dockEl.innerHTML = "";
-
       const pinned = [
-        { id: "launcher", label: "Apps", icon: "❖", action: () => toggleLauncher() },
-        { id: "finder", label: "Finder", icon: "🗂", action: () => openApp("finder", desktopEl) },
-        { id: "browser", label: "Browser", icon: "🌐", action: () => openApp("browser", desktopEl) },
-        { id: "shell", label: "Terminal", icon: ">_", action: () => openApp("shell", desktopEl) },
-        { id: "cmdexe", label: "CMD/EXE", icon: "⌘", action: () => openApp("cmdexe", desktopEl) },
+        { id: "launcher", label: "Apps", iconId: "i-apps", action: () => toggleLauncher() },
+        { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload.openApp("finder", desktopEl) },
+        { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload.openApp("browser", desktopEl) },
+        { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload.openApp("shell", desktopEl) },
+        { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload.openApp("cmdexe", desktopEl) },
       ];
 
       for (const p of pinned) {
@@ -113,7 +146,7 @@
         const runningMatch = wins.find((w) => w.id === `native-${p.id}` || w.id === `hub-${p.id}`);
         if (runningMatch) b.classList.add("running");
         if (runningMatch?.focused) b.classList.add("focused");
-        b.innerHTML = `<span style="font-size:14px;line-height:1;">${p.icon}</span><span>${p.label}</span>`;
+        b.innerHTML = `${svgIcon(p.iconId, 20)}<span>${p.label}</span>`;
         b.onclick = () => {
           if (runningMatch && runningMatch.focused && !runningMatch.minimized) {
             wm.minimize(runningMatch.id);
@@ -136,7 +169,7 @@
           b.className = `dock-item running ${w.focused ? "focused" : ""}`;
           b.title = w.title;
           const shortTitle = w.title.length > 12 ? w.title.slice(0, 11) + "…" : w.title;
-          b.innerHTML = `<span style="font-size:13px;line-height:1;">${w.icon}</span><span>${shortTitle}</span>`;
+          b.innerHTML = `${svgIcon("i-window", 18)}<span>${shortTitle}</span>`;
           b.onclick = () => {
             if (w.focused && !w.minimized) wm.minimize(w.id);
             else wm.focus(w.id);
@@ -155,87 +188,9 @@
     };
 
     wm = new WindowManager(desktopEl, { onChange: renderDock });
-    bindWindowManager(wm);
+    appload.bindWindowManager(wm);
     renderDock([]);
 
-    // Registra apps nativos do OS
-    registerNativeApp("finder", {
-      title: "Finder — Memória Interna InkOS",
-      icon: "🗂",
-      width: 820,
-      height: 520,
-      mount: (el, ctx) => mountFinder(el, { ...ctx, vfs }),
-    });
-
-    registerNativeApp("browser", {
-      title: "InkBrowser",
-      icon: "🌐",
-      width: 900,
-      height: 600,
-      mount: (el, ctx) => mountBrowser(el, { ...ctx, vfs }),
-    });
-
-    registerNativeApp("shell", {
-      title: "Alpine Linux — InkShell",
-      icon: ">_",
-      width: 780,
-      height: 480,
-      mount: (el, ctx) => mountShell(el, { ...ctx, vfs }),
-    });
-
-    registerNativeApp("cmdexe", {
-      title: "CMD & Instalador .EXE",
-      icon: "⌘",
-      width: 800,
-      height: 520,
-      mount: (el, ctx) => mountCmdExe(el, { ...ctx, vfs }),
-    });
-
-    // Boot opcional do kernel Wasm (não bloqueia a interface se o .wasm ainda não compilou)
-    (async () => {
-      try {
-        const mod = await import("./pkg/inkos.js");
-        if (typeof mod.default === "function") await mod.default();
-        const pages = 8192;
-        const memory = new WebAssembly.Memory({ initial: pages, maximum: 16384, shared: true });
-        let soc = null;
-        if (typeof mod.InkSoC === "function") {
-          soc = new mod.InkSoC(pages);
-          soc.bind_shared_memory?.(memory.buffer);
-          const wasiMod = soc.emit_wasi_module?.();
-          if (wasiMod) await WebAssembly.compile(wasiMod);
-        }
-        const worker = new Worker("./js/swap.worker.js", { type: "module" });
-        const control = new SharedArrayBuffer(4096);
-        worker.postMessage({ type: "init", memory: { buffer: memory.buffer }, control });
-        window.inkOS = { memory, soc, worker, vfs, openApp, closeApp };
-      } catch (e) {
-        console.warn("[InkOS kernel]", e?.message || e);
-      }
-    })();
-
-    function toggleLauncher(force) {
-      const next = typeof force === "boolean" ? force : !launcherWin.hidden;
-      launcherWin.hidden = next;
-      if (!launcherWin.hidden) {
-        mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
-        launcherSearch.focus();
-      }
-    }
-
-    launcherSearch.addEventListener("input", () => {
-      mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
-    });
-    launcherGrid.addEventListener("click", (e) => {
-      if (e.target.closest("button")) toggleLauncher(true);
-    });
-    document.querySelector("#top-apps-btn").addEventListener("click", () => toggleLauncher());
-    document.querySelector("#launcher-close").addEventListener("click", () => toggleLauncher(true));
-
-    const wsRail = document.querySelector("#workspace-rail");
-    document.querySelector("#ws-toggle").addEventListener("click", () => {
-      wsRail.classList.toggle("open");
-    });
     wsRail.querySelectorAll(".ws-card").forEach((card) => {
       card.addEventListener("click", () => {
         const n = Number(card.dataset.ws || 1);
@@ -244,34 +199,70 @@
       });
     });
 
-    const modBar = document.querySelector("#modifier-bar");
-    document.querySelector("#keys-toggle").addEventListener("click", () => {
-      modBar.classList.toggle("open");
+    // Helper que carrega app nativo sob demanda (com fallback informativo se o arquivo ainda não existir)
+    const lazyNative = (path, exportName, fallbackMsg) => async (el, ctx) => {
+      try {
+        const mod = await import(path);
+        return await mod[exportName](el, { ...ctx, vfs });
+      } catch (e) {
+        el.innerHTML = `<div style="padding:16px;font-size:13px;line-height:1.5;">
+          <strong>Módulo pendente:</strong> <code>${path}</code><br>
+          <span style="color:var(--muted);">${fallbackMsg} (${e.message})</span>
+        </div>`;
+      }
+    };
+
+    appload.registerNativeApp("finder", {
+      title: "Finder — Memória Interna InkOS",
+      width: 820,
+      height: 520,
+      mount: lazyNative("./js/apps/finder.js", "mountFinder", "Crie inkos/web/js/apps/finder.js no repositório."),
     });
-    modBar.querySelectorAll("button[data-key]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const active = document.activeElement;
-        if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
-          active.dispatchEvent(new KeyboardEvent("keydown", { key: btn.dataset.key, bubbles: true }));
-        }
-      });
+
+    appload.registerNativeApp("browser", {
+      title: "InkBrowser",
+      width: 900,
+      height: 600,
+      mount: lazyNative("./js/apps/browser.js", "mountBrowser", "Crie inkos/web/js/apps/browser.js no repositório."),
     });
+
+    appload.registerNativeApp("shell", {
+      title: "Alpine Linux — InkShell",
+      width: 780,
+      height: 480,
+      mount: lazyNative("./js/apps/shell.js", "mountShell", "Crie inkos/web/js/apps/shell.js no repositório."),
+    });
+
+    appload.registerNativeApp("cmdexe", {
+      title: "CMD & Instalador .EXE",
+      width: 800,
+      height: 520,
+      mount: lazyNative("./js/apps/cmd-exe.js", "mountCmdExe", "Crie inkos/web/js/apps/cmd-exe.js no repositório."),
+    });
+
+    function toggleLauncher(force) {
+      const next = typeof force === "boolean" ? force : !launcherWin.hidden;
+      launcherWin.hidden = next;
+      if (!launcherWin.hidden) {
+        appload.mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
+        launcherSearch.focus();
+      }
+    }
+
+    launcherSearch.addEventListener("input", () => {
+      appload.mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
+    });
+    launcherGrid.addEventListener("click", (e) => {
+      if (e.target.closest("button")) toggleLauncher(true);
+    });
+    document.querySelector("#top-apps-btn").addEventListener("click", () => toggleLauncher());
+    document.querySelector("#launcher-close").addEventListener("click", () => toggleLauncher(true));
 
     document.querySelector("#theme-toggle").addEventListener("click", () => {
       const cur = document.documentElement.dataset.theme;
       document.documentElement.dataset.theme = cur === "latte" ? "mocha" : "latte";
-      syncTheme();
+      appload.syncTheme();
     });
-
-    const updateClock = () => {
-      document.querySelector("#clock").textContent = new Intl.DateTimeFormat(undefined, {
-        weekday: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(new Date());
-    };
-    updateClock();
-    setInterval(updateClock, 15000);
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js").catch(console.error);
