@@ -1,76 +1,190 @@
-// Abre os apps do InkDOS Hub dentro do InkOS (janela + iframe), sem copiar os ~300 MB.
-// Registro: apps/registry.json { base, apps:[{id,name,href,icon,tab?}] }.
-const ALLOW = "cross-origin-isolated; fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write; display-capture; gamepad; web-share";
+// Carregador de apps do InkOS (Hub via iframe/aba + apps nativos no WM com resize)
+const ALLOW =
+  "cross-origin-isolated; fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write; display-capture; gamepad; web-share";
 const MAX_LIVE = 3;
-let reg, z = 10;
-const live = new Map();
-const load = async () => reg ??= await (await fetch("apps/registry.json")).json();
-const urlOf = (r, p) => new URL(p, r.base).href;
 
-// Tema: Mocha -> dark, Latte -> light. O Hub (assets/tema.js) escuta a mensagem "ink-tema".
-const themeOf = () => (document.documentElement.dataset.theme === "latte" ? "light" : "dark");
-const tell = (frame) => {
-  try { frame.contentWindow?.postMessage({ type: "ink-tema", theme: themeOf() }, new URL(reg.base).origin); } catch (_) {}
-};
-export const syncTheme = () => live.forEach((a) => tell(a.win.querySelector("iframe")));
+let reg = null;
+let wmRef = null;
+const nativeApps = new Map(); // id -> { title, icon, width, height, mount(container, ctx) }
+const liveFrames = new Map(); // id -> { winEl, iframe, last }
 
-export const listApps = async () => (await load()).apps;
+export function bindWindowManager(wm) {
+  wmRef = wm;
+}
 
-function evict() {
-  while (live.size >= MAX_LIVE) {
-    const [id] = [...live].sort((a, b) => a[1].last - b[1].last)[0];
-    closeApp(id);
+export function registerNativeApp(id, spec) {
+  nativeApps.set(id, spec);
+}
+
+async function loadRegistry() {
+  if (reg) return reg;
+  const res = await fetch("./apps/registry.json");
+  reg = await res.json();
+  return reg;
+}
+
+function urlOf(r, p) {
+  if (/^https?:\/\//i.test(p)) return p;
+  return new URL(p, r.base).href;
+}
+
+function themeOf() {
+  const t = document.documentElement.dataset.theme;
+  return t === "latte" || t === "light" ? "light" : "dark";
+}
+
+function tellIframeTheme(iframe) {
+  try {
+    const baseOrigin = reg?.base ? new URL(reg.base).origin : "*";
+    iframe?.contentWindow?.postMessage({ type: "ink-tema", theme: themeOf() }, baseOrigin);
+  } catch (_) {}
+}
+
+export function syncTheme() {
+  for (const entry of liveFrames.values()) {
+    tellIframeTheme(entry.iframe);
+  }
+}
+
+export async function listApps() {
+  const r = await loadRegistry();
+  return r.apps || [];
+}
+
+function evictHubFrames() {
+  while (liveFrames.size >= MAX_LIVE) {
+    const oldest = [...liveFrames.entries()].sort((a, b) => a[1].last - b[1].last)[0];
+    if (!oldest) break;
+    const [oldId] = oldest;
+    if (wmRef) {
+      wmRef.close(`hub-${oldId}`);
+    } else {
+      closeApp(oldId);
+    }
   }
 }
 
 export function closeApp(id) {
-  const a = live.get(id); if (!a) return;
-  a.win.querySelector("iframe").src = "about:blank";
-  a.win.remove(); live.delete(id);
+  const entry = liveFrames.get(id);
+  if (entry) {
+    try { entry.iframe.src = "about:blank"; } catch (_) {}
+    liveFrames.delete(id);
+  }
+  wmRef?.close(`hub-${id}`);
+  wmRef?.close(`native-${id}`);
 }
 
-export async function openApp(id, host = document.body) {
-  const r = await load(), app = r.apps.find((x) => x.id === id);
+export async function openApp(id, host = document.querySelector("#desktop") || document.body, extraCtx = {}) {
+  // 1) App nativo do InkOS (Finder, Browser, CMD/EXE, etc.)
+  if (nativeApps.has(id)) {
+    const spec = nativeApps.get(id);
+    const winId = `native-${id}`;
+    if (!wmRef) throw new Error("WindowManager não vinculado ao appload");
+    if (wmRef.windows.has(winId)) {
+      wmRef.focus(winId);
+      return wmRef.windows.get(winId).el;
+    }
+    const container = document.createElement("div");
+    container.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;";
+    const cleanup = await spec.mount(container, {
+      openApp: (targetId, ctx) => openApp(targetId, host, ctx),
+      closeApp: () => wmRef.close(winId),
+      ...extraCtx,
+    });
+    return wmRef.createWindow({
+      id: winId,
+      title: spec.title || id,
+      icon: spec.icon || "◰",
+      width: spec.width || 820,
+      height: spec.height || 540,
+      bodyEl: container,
+      onClose: () => {
+        if (typeof cleanup === "function") cleanup();
+      },
+    });
+  }
+
+  // 2) App do InkDOS Hub via registry.json
+  const r = await loadRegistry();
+  const app = (r.apps || []).find((x) => x.id === id);
   if (!app) throw new Error("app desconhecido: " + id);
+
   const url = urlOf(r, app.href);
-  if (app.tab) return window.open(url, "inkdoshub-" + id) ?? (location.href = url);
-  const hit = live.get(id);
-  if (hit) { hit.last = performance.now(); hit.win.style.zIndex = ++z; return hit.win; }
-  evict();
+  if (app.tab) {
+    return window.open(url, "inkdoshub-" + id) ?? (location.href = url);
+  }
 
-  const win = document.createElement("div");
-  const full = innerWidth < 700;
-  win.style.cssText = `position:absolute;top:0;left:0;z-index:${++z};display:flex;flex-direction:column;overflow:hidden;
-    width:${full ? "100%" : "min(92vw,900px)"};height:${full ? "100%" : "min(80vh,640px)"};
-    background:var(--mantle,#11111b);border:1px solid var(--surface0,#313244);border-radius:${full ? 0 : 10}px;will-change:transform`;
-  let x = full ? 0 : 24 + live.size * 24, y = full ? 0 : 24 + live.size * 24, dx, dy, drag = false;
-  const move = () => (win.style.transform = `translate3d(${x}px,${y}px,0)`);
-  const bar = document.createElement("div");
-  bar.style.cssText = "display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface0,#313244);color:var(--text,#cdd6f4);touch-action:none;user-select:none;font:13px system-ui";
-  bar.innerHTML = `<span style="flex:1"></span><button aria-label="Fechar" style="all:unset;cursor:pointer;padding:2px 8px">✕</button>`;
-  bar.firstChild.textContent = app.name;
-  bar.querySelector("button").onclick = () => closeApp(id);
-  bar.onpointerdown = (e) => { if (e.target.closest("button")) return; drag = true; dx = e.clientX - x; dy = e.clientY - y; win.style.zIndex = ++z; bar.setPointerCapture(e.pointerId); };
-  bar.onpointermove = (e) => { if (drag && !full) { x = e.clientX - dx; y = e.clientY - dy; move(); } };
-  bar.onpointerup = () => (drag = false);
+  const winId = `hub-${id}`;
+  if (liveFrames.has(id) && wmRef?.windows.has(winId)) {
+    liveFrames.get(id).last = performance.now();
+    wmRef.focus(winId);
+    return liveFrames.get(id).winEl;
+  }
 
-  const f = Object.assign(document.createElement("iframe"), { src: url, allow: ALLOW, loading: "lazy" });
-  f.style.cssText = "flex:1;border:0;width:100%;background:#000";
-  f.addEventListener("load", () => tell(f));
-  win.append(bar, f); host.append(win); move();
-  live.set(id, { win, last: performance.now() });
-  return win;
+  evictHubFrames();
+
+  const iframe = document.createElement("iframe");
+  iframe.src = url;
+  iframe.allow = ALLOW;
+  iframe.loading = "lazy";
+  iframe.style.cssText = "flex:1;width:100%;height:100%;border:0;background:var(--bg);";
+  iframe.addEventListener("load", () => tellIframeTheme(iframe));
+
+  const winEl = wmRef
+    ? wmRef.createWindow({
+        id: winId,
+        title: app.name,
+        icon: "◰",
+        width: 860,
+        height: 580,
+        bodyEl: iframe,
+        onClose: () => {
+          try { iframe.src = "about:blank"; } catch (_) {}
+          liveFrames.delete(id);
+        },
+      })
+    : (() => {
+        const d = document.createElement("div");
+        d.style.cssText = "position:absolute;inset:24px;display:flex;flex-direction:column;background:var(--panel-solid);border:1px solid var(--border);border-radius:12px;overflow:hidden;z-index:50;";
+        d.append(iframe);
+        host.append(d);
+        return d;
+      })();
+
+  liveFrames.set(id, { winEl, iframe, last: performance.now() });
+  return winEl;
 }
 
-// Grade de ícones: mountLauncher(document.getElementById("grid"), host)
-export async function mountLauncher(root, host = document.body) {
-  const r = await load();
-  root.style.cssText += ";display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:12px;padding:12px";
-  for (const a of r.apps) {
+export async function mountLauncher(root, host = document.querySelector("#desktop") || document.body, { filterText = "" } = {}) {
+  const r = await loadRegistry();
+  const q = filterText.trim().toLowerCase();
+  const items = (r.apps || []).filter((a) => !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q));
+
+  root.innerHTML = "";
+  root.style.cssText =
+    "display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px;padding:8px;overflow:auto;flex:1;";
+
+  for (const a of items) {
     const b = document.createElement("button");
-    b.style.cssText = "all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text,#cdd6f4);font:12px system-ui;text-align:center";
-    b.innerHTML = `<img width="48" height="48" alt="" loading="lazy"><span></span>`;
-    b.firstChild.src = urlOf(r, a.icon); b.lastChild.textContent = a.name;
+    b.type = "button";
+    b.style.cssText =
+      "appearance:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:12px;border:1px solid transparent;background:var(--surface);color:var(--text);font-size:11.5px;text-align:center;";
+    b.onmouseenter = () => (b.style.borderColor = "var(--border-strong)");
+    b.onmouseleave = () => (b.style.borderColor = "transparent");
+
+    const img = document.createElement("img");
+    img.width = 40;
+    img.height = 40;
+    img.alt = "";
+    img.loading = "lazy";
+    img.src = urlOf(r, a.icon);
+    img.style.cssText = "object-fit:contain;border-radius:8px;";
+
+    const lbl = document.createElement("span");
+    lbl.textContent = a.name;
+    lbl.style.cssText = "line-height:1.2;word-break:break-word;";
+
+    b.append(img, lbl);
     b.onclick = () => openApp(a.id, host).catch(console.error);
     root.append(b);
   }
