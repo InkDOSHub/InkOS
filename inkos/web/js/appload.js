@@ -7,6 +7,13 @@ const live = new Map();
 const load = async () => reg ??= await (await fetch("apps/registry.json")).json();
 const urlOf = (r, p) => new URL(p, r.base).href;
 
+// Tema: Mocha -> dark, Latte -> light. O Hub (assets/tema.js) escuta a mensagem "ink-tema".
+const themeOf = () => (document.documentElement.dataset.theme === "latte" ? "light" : "dark");
+const tell = (frame) => {
+  try { frame.contentWindow?.postMessage({ type: "ink-tema", theme: themeOf() }, new URL(reg.base).origin); } catch (_) {}
+};
+export const syncTheme = () => live.forEach((a) => tell(a.win.querySelector("iframe")));
+
 export const listApps = async () => (await load()).apps;
 
 function evict() {
@@ -49,12 +56,13 @@ export async function openApp(id, host = document.body) {
 
   const f = Object.assign(document.createElement("iframe"), { src: url, allow: ALLOW, loading: "lazy" });
   f.style.cssText = "flex:1;border:0;width:100%;background:#000";
+  f.addEventListener("load", () => tell(f));
   win.append(bar, f); host.append(win); move();
   live.set(id, { win, last: performance.now() });
   return win;
 }
 
-// Grade de ícones: mountLauncher(document.getElementById("grid"))
+// Grade de ícones: mountLauncher(document.getElementById("grid"), host)
 export async function mountLauncher(root, host = document.body) {
   const r = await load();
   root.style.cssText += ";display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:12px;padding:12px";
