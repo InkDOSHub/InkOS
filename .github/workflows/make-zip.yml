@@ -1,0 +1,44 @@
+name: Make InkOS Zip
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create inkos-bundle.zip
+        run: |
+          zip -r inkos-bundle.zip \
+            rust-toolchain.toml \
+            .cargo \
+            inkos \
+            scripts \
+            -x "inkos/web/*" 2>/dev/null || true
+          zip -r inkos-bundle.zip \
+            rust-toolchain.toml \
+            .cargo/config.toml \
+            inkos/Cargo.toml \
+            inkos/src/lib.rs \
+            inkos/inkos-wasm-bundle.json \
+            inkos/web/_headers \
+            inkos/web/manifest.json \
+            inkos/web/sw.js \
+            inkos/web/index.html \
+            inkos/web/usr/apps/hub-runtime.js \
+            scripts/build.sh
+          ls -lh inkos-bundle.zip
+
+      - name: Commit zip to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add inkos-bundle.zip
+          git commit -m "chore: add inkos-bundle.zip" || true
+          git push origin HEAD:main
