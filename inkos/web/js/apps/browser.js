@@ -36,7 +36,7 @@ export function mountBrowser(root, { vfs }) {
     stage.innerHTML = "";
 
     if (target.startsWith("vfs://") || target.startsWith("vfs:")) {
-      const vfsPath = target.replace(/^vfs:\/?/, "/");
+      const vfsPath = "/" + target.replace(/^vfs:\/*/i, "");
       const blob = await vfs.toBlob(vfsPath);
       if (!blob) {
         stage.innerHTML = `<div style="padding:16px;color:var(--danger);">Arquivo não encontrado no VFS: ${vfsPath}</div>`;
