@@ -6,7 +6,9 @@ const ASSETS = [
   "./pkg/inkos.js", "./pkg/inkos_bg.wasm",
   "./js/wm.js", "./js/mobile.js", "./js/terminal.js", "./js/apps.js",
   "./js/bench.js", "./js/session.js", "./js/swap.worker.js",
-  "./js/appload.js", "./apps/registry.json"
+  "./js/appload.js", "./js/vfs.js",
+  "./js/apps/finder.js", "./js/apps/browser.js", "./js/apps/shell.js", "./js/apps/cmd-exe.js",
+  "./apps/registry.json"
 ];
 const HEAVY = /\/(pkg|apps)\/.*\.(wasm|js)$/;
 
