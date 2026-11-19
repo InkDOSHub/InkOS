@@ -13,26 +13,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create inkos-bundle.zip
+      - name: Build inkos-bundle.zip from gemini-code-1795097281585.txt
         run: |
-          zip -r inkos-bundle.zip \
-            rust-toolchain.toml \
-            .cargo \
-            inkos \
-            scripts \
-            -x "inkos/web/*" 2>/dev/null || true
-          zip -r inkos-bundle.zip \
-            rust-toolchain.toml \
-            .cargo/config.toml \
-            inkos/Cargo.toml \
-            inkos/src/lib.rs \
-            inkos/inkos-wasm-bundle.json \
-            inkos/web/_headers \
-            inkos/web/manifest.json \
-            inkos/web/sw.js \
-            inkos/web/index.html \
-            inkos/web/usr/apps/hub-runtime.js \
-            scripts/build.sh
+          test -f gemini-code-1795097281585.txt
+          python3 - <<'EOF'
+          from pathlib import Path
+          import re, zipfile
+
+          text = Path("gemini-code-1795097281585.txt").read_text(encoding="utf-8")
+          parts = re.split(r"^=== FILE: (.+?) ===\r?\n", text, flags=re.MULTILINE)
+
+          count = 0
+          with zipfile.ZipFile("inkos-bundle.zip", "w", compression=zipfile.ZIP_DEFLATED) as zf:
+              for i in range(1, len(parts), 2):
+                  rel_path = parts[i].strip().lstrip("./")
+                  content = parts[i + 1]
+                  if content.endswith("\n"):
+                      content = content[:-1]
+                  zf.writestr(rel_path, content + ("\n" if content else ""))
+                  count += 1
+
+          print(f"Packed {count} files into inkos-bundle.zip")
+          EOF
+          rm -f gemini-code-1795097281585.txt
           ls -lh inkos-bundle.zip
 
       - name: Commit zip to main
@@ -40,5 +43,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add inkos-bundle.zip
-          git commit -m "chore: add inkos-bundle.zip" || true
+          git rm -f --ignore-unmatch gemini-code-1795097281585.txt
+          git commit -m "chore: generate inkos-bundle.zip" || true
           git push origin HEAD:main
