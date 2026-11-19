@@ -1,4 +1,4 @@
-// Window Manager do InkOS — arrastar, redimensionar, minimizar, maximizar e workspaces
+// Window Manager do InkOS — estilo macOS (semáforos), arrastar, redimensionar, minimizar, maximizar e workspaces
 export class WindowManager {
   constructor(desktopEl, { onChange } = {}) {
     this.desktop = desktopEl;
@@ -22,7 +22,7 @@ export class WindowManager {
     return [...this.windows.values()].map((r) => ({
       id: r.id,
       title: r.title,
-      icon: r.icon || "◰",
+      icon: r.icon || "i-window",
       minimized: r.minimized,
       maximized: r.maximized,
       workspace: r.workspace,
@@ -101,7 +101,7 @@ export class WindowManager {
   createWindow({
     id,
     title = "Janela",
-    icon = "◰",
+    icon = "i-window",
     width = 760,
     height = 520,
     x,
@@ -132,36 +132,41 @@ export class WindowManager {
     header.className = "window-title";
     header.dataset.dragHandle = "1";
 
-    const titleSpan = document.createElement("span");
-    titleSpan.className = "win-title-text";
-    titleSpan.textContent = title;
-
     const controls = document.createElement("div");
-    controls.className = "win-controls";
+    controls.className = "mac-lights";
+
+    const btnClose = document.createElement("button");
+    btnClose.className = "mac-light close";
+    btnClose.type = "button";
+    btnClose.title = "Fechar";
+    btnClose.textContent = "×";
+    btnClose.onclick = (e) => { e.stopPropagation(); this.close(id); };
 
     const btnMin = document.createElement("button");
-    btnMin.className = "win-btn";
+    btnMin.className = "mac-light min";
     btnMin.type = "button";
     btnMin.title = "Minimizar";
-    btnMin.textContent = "–";
+    btnMin.textContent = "−";
     btnMin.onclick = (e) => { e.stopPropagation(); this.minimize(id); };
 
     const btnMax = document.createElement("button");
-    btnMax.className = "win-btn";
+    btnMax.className = "mac-light max";
     btnMax.type = "button";
     btnMax.title = "Maximizar";
-    btnMax.textContent = "□";
+    btnMax.textContent = "+";
     btnMax.onclick = (e) => { e.stopPropagation(); this.toggleMaximize(id); };
 
-    const btnClose = document.createElement("button");
-    btnClose.className = "win-btn close";
-    btnClose.type = "button";
-    btnClose.title = "Fechar";
-    btnClose.textContent = "✕";
-    btnClose.onclick = (e) => { e.stopPropagation(); this.close(id); };
+    controls.append(btnClose, btnMin, btnMax);
 
-    controls.append(btnMin, btnMax, btnClose);
-    header.append(titleSpan, controls);
+    const titleSpan = document.createElement("span");
+    titleSpan.className = "win-title-text";
+    titleSpan.style.textAlign = "center";
+    titleSpan.textContent = title;
+
+    const spacer = document.createElement("div");
+    spacer.style.width = "48px";
+
+    header.append(controls, titleSpan, spacer);
 
     const body = document.createElement("div");
     body.className = "window-body";
