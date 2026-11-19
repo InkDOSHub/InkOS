@@ -1,0 +1,6 @@
+{
+  "apps": [
+    { "id": "pdf", "name": "PDF", "icon": "file-type-pdf", "ui": "ui.js" },
+    { "id": "terminal", "name": "InkShell", "icon": "terminal", "ui": "ui.js" }
+  ]
+}
