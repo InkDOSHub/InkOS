@@ -45,7 +45,7 @@ if ! command -v wasm-pack >/dev/null 2>&1; then
 fi
 command -v wasm-pack >/dev/null 2>&1 || { echo "wasm-pack installation failed" >&2; exit 1; }
 
-export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-feature=+atomics,+bulk-memory,+mutable-globals"
+export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-feature=+bulk-memory,+mutable-globals"
 rm -rf dist
 mkdir -p dist/pkg
 wasm-pack build inkos --target web --release --out-dir ../dist/pkg
@@ -84,4 +84,3 @@ if [[ -n "$big" ]]; then
 fi
 
 printf 'Built dist/ (%s files)\n' "$(find dist -type f | wc -l | tr -d ' ')"
-
