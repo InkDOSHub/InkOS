@@ -1,191 +1,130 @@
-// Carregador de apps do InkOS (Hub via iframe/aba + apps nativos no WM com resize)
-const ALLOW =
-  "cross-origin-isolated; fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write; display-capture; gamepad; web-share";
-const MAX_LIVE = 3;
-
-let reg = null;
-let wmRef = null;
-const nativeApps = new Map(); // id -> { title, icon, width, height, mount(container, ctx) }
-const liveFrames = new Map(); // id -> { winEl, iframe, last }
+// Carregador de aplicativos nativos do InkOS e apps do InkDOS Hub (registry.json)
+let wmInstance = null;
+let defaultDesktop = null;
+const nativeApps = new Map();
+let hubRegistryCache = null;
 
 export function bindWindowManager(wm) {
-  wmRef = wm;
+  wmInstance = wm;
 }
 
-export function registerNativeApp(id, spec) {
-  nativeApps.set(id, spec);
+export function registerNativeApp(id, config) {
+  nativeApps.set(id, { id, ...config });
 }
 
-async function loadRegistry() {
-  if (reg) return reg;
-  const res = await fetch("./apps/registry.json");
-  reg = await res.json();
-  return reg;
-}
-
-function urlOf(r, p) {
-  if (/^https?:\/\//i.test(p)) return p;
-  return new URL(p, r.base).href;
-}
-
-function themeOf() {
-  const t = document.documentElement.dataset.theme;
-  return t === "latte" || t === "light" ? "light" : "dark";
-}
-
-function tellIframeTheme(iframe) {
+export async function loadHubRegistry() {
+  if (hubRegistryCache) return hubRegistryCache;
   try {
-    const baseOrigin = reg?.base ? new URL(reg.base).origin : "*";
-    iframe?.contentWindow?.postMessage({ type: "ink-tema", theme: themeOf() }, baseOrigin);
-  } catch (_) {}
+    const res = await fetch("./apps/registry.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : Array.isArray(data?.apps) ? data.apps : [];
+    hubRegistryCache = list;
+    return list;
+  } catch (err) {
+    console.warn("[InkOS appload] registry.json indisponível:", err);
+    return [];
+  }
 }
 
 export function syncTheme() {
-  for (const entry of liveFrames.values()) {
-    tellIframeTheme(entry.iframe);
+  const theme = document.documentElement.dataset.theme === "latte" ? "latte" : "mocha";
+  const frames = document.querySelectorAll("iframe");
+  for (const fr of frames) {
+    try {
+      fr.contentWindow?.postMessage({ type: "ink-tema", theme }, "*");
+    } catch (_) {}
   }
 }
 
-export async function listApps() {
-  const r = await loadRegistry();
-  return r.apps || [];
-}
+export async function openApp(appId, desktopEl, ctx = {}) {
+  const desk = desktopEl || defaultDesktop || document.querySelector("#desktop");
+  if (desk) defaultDesktop = desk;
+  if (!wmInstance || !desk) return;
 
-function evictHubFrames() {
-  while (liveFrames.size >= MAX_LIVE) {
-    const oldest = [...liveFrames.entries()].sort((a, b) => a[1].last - b[1].last)[0];
-    if (!oldest) break;
-    const [oldId] = oldest;
-    if (wmRef) {
-      wmRef.close(`hub-${oldId}`);
-    } else {
-      closeApp(oldId);
-    }
-  }
-}
-
-export function closeApp(id) {
-  const entry = liveFrames.get(id);
-  if (entry) {
-    try { entry.iframe.src = "about:blank"; } catch (_) {}
-    liveFrames.delete(id);
-  }
-  wmRef?.close(`hub-${id}`);
-  wmRef?.close(`native-${id}`);
-}
-
-export async function openApp(id, host = document.querySelector("#desktop") || document.body, extraCtx = {}) {
-  // 1) App nativo do InkOS (Finder, Browser, CMD/EXE, etc.)
-  if (nativeApps.has(id)) {
-    const spec = nativeApps.get(id);
-    const winId = `native-${id}`;
-    if (!wmRef) throw new Error("WindowManager não vinculado ao appload");
-    if (wmRef.windows.has(winId)) {
-      wmRef.focus(winId);
-      return wmRef.windows.get(winId).el;
-    }
-    const container = document.createElement("div");
-    container.style.cssText = "flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;";
-    const cleanup = await spec.mount(container, {
-      openApp: (targetId, ctx) => openApp(targetId, host, ctx),
-      closeApp: () => wmRef.close(winId),
-      ...extraCtx,
-    });
-    return wmRef.createWindow({
+  const native = nativeApps.get(appId);
+  if (native) {
+    const winId = `native-${native.id}`;
+    return wmInstance.createWindow({
       id: winId,
-      title: spec.title || id,
-      icon: spec.icon || "◰",
-      width: spec.width || 820,
-      height: spec.height || 540,
-      bodyEl: container,
-      onClose: () => {
-        if (typeof cleanup === "function") cleanup();
-      },
+      title: native.title || native.id,
+      width: native.width || 780,
+      height: native.height || 520,
+      renderContent: (bodyEl) => native.mount?.(bodyEl, ctx),
     });
   }
 
-  // 2) App do InkDOS Hub via registry.json
-  const r = await loadRegistry();
-  const app = (r.apps || []).find((x) => x.id === id);
-  if (!app) throw new Error("app desconhecido: " + id);
+  const registry = await loadHubRegistry();
+  const entry = registry.find((a) => a && (a.id === appId || a.slug === appId));
+  const winId = `hub-${appId}`;
+  const url = entry?.url || entry?.entry || `./apps/${appId}/index.html`;
+  const title = entry?.name || entry?.title || `Hub — ${appId}`;
 
-  const url = urlOf(r, app.href);
-  if (app.tab) {
-    return window.open(url, "inkdoshub-" + id) ?? (location.href = url);
-  }
-
-  const winId = `hub-${id}`;
-  if (liveFrames.has(id) && wmRef?.windows.has(winId)) {
-    liveFrames.get(id).last = performance.now();
-    wmRef.focus(winId);
-    return liveFrames.get(id).winEl;
-  }
-
-  evictHubFrames();
-
-  const iframe = document.createElement("iframe");
-  iframe.src = url;
-  iframe.allow = ALLOW;
-  iframe.loading = "lazy";
-  iframe.style.cssText = "flex:1;width:100%;height:100%;border:0;background:var(--bg);";
-  iframe.addEventListener("load", () => tellIframeTheme(iframe));
-
-  const winEl = wmRef
-    ? wmRef.createWindow({
-        id: winId,
-        title: app.name,
-        icon: "◰",
-        width: 860,
-        height: 580,
-        bodyEl: iframe,
-        onClose: () => {
-          try { iframe.src = "about:blank"; } catch (_) {}
-          liveFrames.delete(id);
-        },
-      })
-    : (() => {
-        const d = document.createElement("div");
-        d.style.cssText = "position:absolute;inset:24px;display:flex;flex-direction:column;background:var(--panel-solid);border:1px solid var(--border);border-radius:12px;overflow:hidden;z-index:50;";
-        d.append(iframe);
-        host.append(d);
-        return d;
-      })();
-
-  liveFrames.set(id, { winEl, iframe, last: performance.now() });
-  return winEl;
+  return wmInstance.createWindow({
+    id: winId,
+    title,
+    width: entry?.width || 860,
+    height: entry?.height || 560,
+    renderContent: (bodyEl) => {
+      bodyEl.innerHTML = `<iframe src="${url}" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" style="width:100%;height:100%;border:0;background:var(--panel-solid);"></iframe>`;
+      const iframe = bodyEl.querySelector("iframe");
+      iframe?.addEventListener("load", () => syncTheme(), { once: true });
+    },
+  });
 }
 
-export async function mountLauncher(root, host = document.querySelector("#desktop") || document.body, { filterText = "" } = {}) {
-  const r = await loadRegistry();
-  const q = filterText.trim().toLowerCase();
-  const items = (r.apps || []).filter((a) => !q || a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q));
+export function closeApp(appId) {
+  if (!wmInstance) return;
+  if (wmInstance.windows.has(`native-${appId}`)) {
+    wmInstance.close(`native-${appId}`);
+  }
+  if (wmInstance.windows.has(`hub-${appId}`)) {
+    wmInstance.close(`hub-${appId}`);
+  }
+}
 
-  root.innerHTML = "";
-  root.style.cssText =
-    "display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px;padding:8px;overflow:auto;flex:1;";
+export async function mountLauncher(gridEl, desktopEl, { filterText = "" } = {}) {
+  if (desktopEl) defaultDesktop = desktopEl;
+  const q = String(filterText || "").trim().toLowerCase();
+  const registry = await loadHubRegistry();
 
-  for (const a of items) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.style.cssText =
-      "appearance:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:12px;border:1px solid transparent;background:var(--surface);color:var(--text);font-size:11.5px;text-align:center;";
-    b.onmouseenter = () => (b.style.borderColor = "var(--border-strong)");
-    b.onmouseleave = () => (b.style.borderColor = "transparent");
+  const allItems = [
+    ...Array.from(nativeApps.values()).map((n) => ({
+      id: n.id,
+      name: n.title || n.id,
+      kind: "Nativo",
+    })),
+    ...registry
+      .filter((a) => a && a.id && !nativeApps.has(a.id))
+      .map((a) => ({
+        id: a.id,
+        name: a.name || a.title || a.id,
+        kind: "Hub",
+      })),
+  ];
 
-    const img = document.createElement("img");
-    img.width = 40;
-    img.height = 40;
-    img.alt = "";
-    img.loading = "lazy";
-    img.src = urlOf(r, a.icon);
-    img.style.cssText = "object-fit:contain;border-radius:8px;";
+  const filtered = q
+    ? allItems.filter((item) => item.name.toLowerCase().includes(q) || item.id.toLowerCase().includes(q))
+    : allItems;
 
-    const lbl = document.createElement("span");
-    lbl.textContent = a.name;
-    lbl.style.cssText = "line-height:1.2;word-break:break-word;";
+  gridEl.innerHTML = "";
+  if (!filtered.length) {
+    gridEl.innerHTML = `<div style="padding:16px;font-size:12.5px;color:var(--muted);">Nenhum aplicativo encontrado.</div>`;
+    return;
+  }
 
-    b.append(img, lbl);
-    b.onclick = () => openApp(a.id, host).catch(console.error);
-    root.append(b);
+  for (const item of filtered) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "app-tile";
+    btn.innerHTML = `
+      <svg width="24" height="24" aria-hidden="true"><use href="./icons.svg#i-window"></use></svg>
+      <span>${item.name}</span>
+      <small style="font-size:10px;color:var(--muted);">${item.kind}</small>
+    `;
+    btn.onclick = () => {
+      openApp(item.id, defaultDesktop).catch(console.error);
+    };
+    gridEl.append(btn);
   }
 }
