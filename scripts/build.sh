@@ -51,9 +51,22 @@ mkdir -p dist/pkg
 wasm-pack build inkos --target web --release --out-dir ../dist/pkg
 
 WASM=dist/pkg/inkos_bg.wasm
+
+# wasm-opt: se não existir, tenta binaryen via npm. Qualquer falha aqui NÃO derruba o build.
+if ! command -v wasm-opt >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+  optdir=$(mktemp -d "${TMPDIR:-/tmp}/binaryen.XXXXXX")
+  if npm install --prefix "$optdir" --no-audit --no-fund --silent binaryen >/dev/null 2>&1; then
+    export PATH="$optdir/node_modules/.bin:$PATH"
+  fi
+fi
 if command -v wasm-opt >/dev/null 2>&1 && [[ -f "$WASM" ]]; then
-  wasm-opt -O3 --enable-threads --enable-bulk-memory "$WASM" -o "${WASM}.opt"
-  mv "${WASM}.opt" "$WASM"
+  if wasm-opt -O3 --all-features --strip-debug "$WASM" -o "${WASM}.opt"; then
+    mv "${WASM}.opt" "$WASM"
+    echo "wasm-opt ok ($(wc -c < "$WASM" | tr -d ' ') bytes)"
+  else
+    rm -f "${WASM}.opt"
+    echo "wasm-opt failed; keeping unoptimized wasm" >&2
+  fi
 else
   echo "wasm-opt unavailable; using wasm-pack output without optimization" >&2
 fi
@@ -62,4 +75,12 @@ cp -a inkos/web/. dist/
 [[ -f dist/_headers ]] || { echo "dist/_headers missing" >&2; exit 1; }
 grep -q '^  Cross-Origin-Opener-Policy: same-origin$' dist/_headers
 grep -q '^  Cross-Origin-Embedder-Policy: require-corp$' dist/_headers
+
+# Cloudflare Pages recusa arquivos acima de 25 MiB: avisa antes do upload.
+big=$(find dist -type f -size +25M)
+if [[ -n "$big" ]]; then
+  echo "WARNING: files over 25 MiB (Cloudflare Pages limit):" >&2
+  echo "$big" >&2
+fi
+
 printf 'Built dist/ (%s files)\n' "$(find dist -type f | wc -l | tr -d ' ')"
