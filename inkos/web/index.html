@@ -3,182 +3,279 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#1e1e2e">
+  <meta name="theme-color" content="#111117">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>InkOS</title>
+  <title>InkOS — COSMIC Desktop</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./theme/catppuccin.css">
 </head>
 <body>
   <svg class="icon-library" aria-hidden="true"><use href="./icons.svg#i-desktop"></use></svg>
-  <header class="topbar">
-    <strong>InkOS 64-bit</strong>
-    <span id="isolation-badge" style="font-size:12px;opacity:.85"></span>
-    <span id="clock"></span>
-    <button id="theme-toggle" aria-label="Alternar tema claro e escuro">◐</button>
+
+  <header class="topbar" role="banner">
+    <div class="topbar-left">
+      <button id="ws-toggle" class="top-pill" type="button">Workspaces</button>
+      <button id="top-apps-btn" class="top-pill" type="button">Applications</button>
+      <strong style="margin-left:4px;font-size:13px;">InkOS</strong>
+    </div>
+    <div class="topbar-center">
+      <span id="clock" style="font-weight:600;"></span>
+    </div>
+    <div class="topbar-right">
+      <span id="isolation-badge" class="badge-iso"></span>
+      <button id="keys-toggle" class="top-pill" type="button" title="Teclas modificadoras">⌨</button>
+      <button id="theme-toggle" class="top-pill" type="button" aria-label="Alternar tema claro e escuro">◐</button>
+    </div>
   </header>
+
+  <aside id="workspace-rail" class="workspace-rail" aria-label="Workspaces">
+    <button class="ws-card active" data-ws="1" type="button">
+      <strong>Workspace 1</strong>
+      <span class="ws-count" id="ws-count-1">0 janelas</span>
+    </button>
+    <button class="ws-card" data-ws="2" type="button">
+      <strong>Workspace 2</strong>
+      <span class="ws-count" id="ws-count-2">0 janelas</span>
+    </button>
+    <button class="ws-card" data-ws="3" type="button">
+      <strong>Workspace 3</strong>
+      <span class="ws-count" id="ws-count-3">0 janelas</span>
+    </button>
+  </aside>
 
   <main id="desktop" class="desktop" aria-label="InkOS desktop">
     <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
 
-    <section class="window" id="terminal-window" aria-label="Terminal window">
-      <header class="window-title" data-drag-handle>
-        <svg><use href="./icons.svg#i-terminal"></use></svg>
-        <span>Alpine Linux — InkShell</span>
-        <button id="terminal-close" aria-label="Fechar terminal">×</button>
-      </header>
-      <div id="terminal-output" class="terminal-output" role="log" aria-live="polite">Iniciando kernel InkSoC...</div>
-      <form id="terminal-form">
-        <label for="terminal-input">$</label>
-        <input id="terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Entrada do terminal">
-      </form>
-    </section>
-
-    <section class="window" id="launcher-window" hidden aria-label="Aplicativos InkOS">
-      <header class="window-title" data-drag-handle>
-        <svg><use href="./icons.svg#i-desktop"></use></svg>
-        <span>Aplicativos InkOS (25 apps do Hub)</span>
-        <button id="launcher-close" aria-label="Fechar aplicativos">×</button>
-      </header>
-      <div id="app-grid" style="max-height:55vh;overflow:auto;"></div>
+    <section class="launcher-overlay" id="launcher-window" hidden aria-label="Applications Launcher">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <strong>Applications — InkDOS Hub &amp; Nativos</strong>
+        <button id="launcher-close" class="win-btn close" type="button" aria-label="Fechar">✕</button>
+      </div>
+      <input id="launcher-search" class="launcher-search" type="search" placeholder="Type to search apps..." autocomplete="off">
+      <div id="app-grid"></div>
     </section>
   </main>
 
   <aside id="modifier-bar" class="modifier-bar" aria-label="Teclas modificadoras">
-    <button data-key="Escape">Esc</button>
-    <button data-key="Tab">Tab</button>
-    <button data-key="Control">Ctrl</button>
-    <button data-key="Alt">Opt</button>
-    <button data-key="Meta">Cmd</button>
-    <button data-key="ArrowLeft" aria-label="Seta esquerda">←</button>
-    <button data-key="ArrowDown" aria-label="Seta baixo">↓</button>
-    <button data-key="ArrowUp" aria-label="Seta cima">↑</button>
-    <button data-key="ArrowRight" aria-label="Seta direita">→</button>
+    <button data-key="Escape" type="button">Esc</button>
+    <button data-key="Tab" type="button">Tab</button>
+    <button data-key="Control" type="button">Ctrl</button>
+    <button data-key="Alt" type="button">Opt</button>
+    <button data-key="Meta" type="button">Cmd</button>
+    <button data-key="ArrowLeft" type="button">←</button>
+    <button data-key="ArrowDown" type="button">↓</button>
+    <button data-key="ArrowUp" type="button">↑</button>
+    <button data-key="ArrowRight" type="button">→</button>
   </aside>
 
-  <nav class="dock">
-    <button id="open-apps"><svg><use href="./icons.svg#i-desktop"></use></svg><span>Apps</span></button>
-    <button id="open-terminal"><svg><use href="./icons.svg#i-terminal"></use></svg><span>Terminal</span></button>
-    <button id="run-bench"><span>InkBench</span></button>
-    <button id="session-btn"><span>Sessão</span></button>
-    <button id="wake-btn"><span>Despertar</span></button>
-    <button id="fullscreen-button"><span>Tela Cheia</span></button>
-  </nav>
+  <div class="dock-wrap">
+    <nav id="dock" class="dock" aria-label="Dock de aplicativos"></nav>
+  </div>
+
   <input type="file" id="wake-file" accept=".inkos" hidden>
 
   <script type="module">
-    import init, { InkSoC } from "./pkg/inkos.js";
     import { WindowManager } from "./js/wm.js";
-    import { MobileInput } from "./js/mobile.js";
-    import { Terminal } from "./js/terminal.js";
+    import { bindWindowManager, registerNativeApp, openApp, closeApp, mountLauncher, syncTheme } from "./js/appload.js";
+    import { vfs } from "./js/vfs.js";
+    import { mountFinder } from "./js/apps/finder.js";
+    import { mountBrowser } from "./js/apps/browser.js";
+    import { mountShell } from "./js/apps/shell.js";
+    import { mountCmdExe } from "./js/apps/cmd-exe.js";
 
     const desktopEl = document.querySelector("#desktop");
-    const out = document.querySelector("#terminal-output");
+    const dockEl = document.querySelector("#dock");
+    const launcherWin = document.querySelector("#launcher-window");
+    const launcherGrid = document.querySelector("#app-grid");
+    const launcherSearch = document.querySelector("#launcher-search");
     const badge = document.querySelector("#isolation-badge");
+
     badge.textContent = window.crossOriginIsolated ? "SAB • JIT Ativo" : "Modo Compatibilidade";
+    vfs.init().catch(console.error);
 
-    try {
-      await init();
-      const pages = 8192; // 512 MiB RAM física fixa
-      const memory = new WebAssembly.Memory({ initial: pages, maximum: 16384, shared: true });
-      const soc = new InkSoC(pages);
-      soc.bind_shared_memory(memory.buffer);
+    let wm;
+    const renderDock = (wins = []) => {
+      dockEl.innerHTML = "";
 
-      const wasiMod = soc.emit_wasi_module();
-      await WebAssembly.compile(wasiMod);
+      const pinned = [
+        { id: "launcher", label: "Apps", icon: "❖", action: () => toggleLauncher() },
+        { id: "finder", label: "Finder", icon: "🗂", action: () => openApp("finder", desktopEl) },
+        { id: "browser", label: "Browser", icon: "🌐", action: () => openApp("browser", desktopEl) },
+        { id: "shell", label: "Terminal", icon: ">_", action: () => openApp("shell", desktopEl) },
+        { id: "cmdexe", label: "CMD/EXE", icon: "⌘", action: () => openApp("cmdexe", desktopEl) },
+      ];
 
-      const worker = new Worker("./js/swap.worker.js", { type: "module" });
-      const control = new SharedArrayBuffer(4096);
-      worker.postMessage({ type: "init", memory: { buffer: memory.buffer }, control });
-
-      window.inkOS = { memory, soc, worker };
-      out.textContent = `InkOS 64-bit Kernel Online (${(soc.ram_bytes() / 1048576).toFixed(0)} MiB RAM | OPFS Swap Pronto)\nAlpine Linux v3.20 (aarch64/wasm64) — digite 'help' ou 'uname -a'\n`;
-
-      const wm = new WindowManager(desktopEl);
-      new MobileInput({ desktop: desktopEl, framebuffer: document.querySelector("#framebuffer"), wm, worker });
-      new Terminal({ worker, output: out, form: document.querySelector("#terminal-form"), input: document.querySelector("#terminal-input") });
-
-      document.querySelector("#run-bench").addEventListener("click", async () => {
-        document.querySelector("#terminal-window").hidden = false;
-        out.textContent += "\n[InkBench] Executando suíte JIT Wasm + OPFS + GPU...";
-        try {
-          const benchMod = await import("./js/bench.js");
-          const fn = benchMod.runBenchmarks || benchMod.default;
-          if (typeof fn === "function") {
-            const res = await fn();
-            out.textContent += `\n[InkBench] Resultado: ${JSON.stringify(res, null, 2)}`;
+      for (const p of pinned) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "dock-item";
+        const runningMatch = wins.find((w) => w.id === `native-${p.id}` || w.id === `hub-${p.id}`);
+        if (runningMatch) b.classList.add("running");
+        if (runningMatch?.focused) b.classList.add("focused");
+        b.innerHTML = `<span style="font-size:14px;line-height:1;">${p.icon}</span><span>${p.label}</span>`;
+        b.onclick = () => {
+          if (runningMatch && runningMatch.focused && !runningMatch.minimized) {
+            wm.minimize(runningMatch.id);
+          } else {
+            p.action();
           }
-        } catch (err) {
-          out.textContent += `\n[InkBench] Erro: ${err.message}`;
-        }
-      });
+        };
+        dockEl.append(b);
+      }
 
-      document.querySelector("#session-btn").addEventListener("click", async () => {
-        const pwd = prompt("Senha para congelar e criptografar sessão (.inkos):");
-        if (!pwd) return;
-        document.querySelector("#terminal-window").hidden = false;
-        out.textContent += "\n[InkSoC Crypto] Derivando chave PBKDF2 + AES-GCM 256-bit...";
-        try {
-          const { SessionManager } = await import("./js/session.js");
-          const sm = new SessionManager();
-          const blob = await sm.suspendAndExport(pwd, new Uint8Array(memory.buffer.slice(0, 65536)));
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "sessao.inkos";
-          a.click();
-          out.textContent += "\n[InkSoC Crypto] Máquina suspensa e exportada (sessao.inkos).";
-        } catch (err) {
-          out.textContent += `\n[InkSoC Crypto] Erro: ${err.message}`;
-        }
-      });
+      const openWins = wins.filter((w) => !/^native-(finder|browser|shell|cmdexe)$/.test(w.id));
+      if (openWins.length > 0) {
+        const sep = document.createElement("div");
+        sep.className = "dock-sep";
+        dockEl.append(sep);
 
-      const wakeInput = document.querySelector("#wake-file");
-      document.querySelector("#wake-btn").addEventListener("click", () => wakeInput.click());
-      wakeInput.addEventListener("change", async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const pwd = prompt("Digite a senha para despertar a sessão (.inkos):");
-        if (!pwd) return;
-        document.querySelector("#terminal-window").hidden = false;
-        try {
-          const { SessionManager } = await import("./js/session.js");
-          const sm = new SessionManager();
-          const state = await sm.wakeFromBlob(pwd, file);
-          out.textContent += `\n[InkSoC Crypto] Sessão despertada (${Object.keys(state.files || {}).length} arquivos restaurados no OPFS).`;
-        } catch (err) {
-          out.textContent += `\n[InkSoC Crypto] Falha ao despertar (senha incorreta ou arquivo inválido).`;
+        for (const w of openWins) {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = `dock-item running ${w.focused ? "focused" : ""}`;
+          b.title = w.title;
+          const shortTitle = w.title.length > 12 ? w.title.slice(0, 11) + "…" : w.title;
+          b.innerHTML = `<span style="font-size:13px;line-height:1;">${w.icon}</span><span>${shortTitle}</span>`;
+          b.onclick = () => {
+            if (w.focused && !w.minimized) wm.minimize(w.id);
+            else wm.focus(w.id);
+          };
+          dockEl.append(b);
         }
-      });
-    } catch (e) {
-      out.textContent = `Falha no boot do InkSoC: ${e.message}`;
-      console.error(e);
+      }
+
+      for (let i = 1; i <= 3; i++) {
+        const el = document.querySelector(`#ws-count-${i}`);
+        if (el) {
+          const c = wins.filter((x) => x.workspace === i).length;
+          el.textContent = `${c} ${c === 1 ? "janela" : "janelas"}`;
+        }
+      }
+    };
+
+    wm = new WindowManager(desktopEl, { onChange: renderDock });
+    bindWindowManager(wm);
+    renderDock([]);
+
+    // Registra apps nativos do OS
+    registerNativeApp("finder", {
+      title: "Finder — Memória Interna InkOS",
+      icon: "🗂",
+      width: 820,
+      height: 520,
+      mount: (el, ctx) => mountFinder(el, { ...ctx, vfs }),
+    });
+
+    registerNativeApp("browser", {
+      title: "InkBrowser",
+      icon: "🌐",
+      width: 900,
+      height: 600,
+      mount: (el, ctx) => mountBrowser(el, { ...ctx, vfs }),
+    });
+
+    registerNativeApp("shell", {
+      title: "Alpine Linux — InkShell",
+      icon: ">_",
+      width: 780,
+      height: 480,
+      mount: (el, ctx) => mountShell(el, { ...ctx, vfs }),
+    });
+
+    registerNativeApp("cmdexe", {
+      title: "CMD & Instalador .EXE",
+      icon: "⌘",
+      width: 800,
+      height: 520,
+      mount: (el, ctx) => mountCmdExe(el, { ...ctx, vfs }),
+    });
+
+    // Boot opcional do kernel Wasm (não bloqueia a interface se o .wasm ainda não compilou)
+    (async () => {
+      try {
+        const mod = await import("./pkg/inkos.js");
+        if (typeof mod.default === "function") await mod.default();
+        const pages = 8192;
+        const memory = new WebAssembly.Memory({ initial: pages, maximum: 16384, shared: true });
+        let soc = null;
+        if (typeof mod.InkSoC === "function") {
+          soc = new mod.InkSoC(pages);
+          soc.bind_shared_memory?.(memory.buffer);
+          const wasiMod = soc.emit_wasi_module?.();
+          if (wasiMod) await WebAssembly.compile(wasiMod);
+        }
+        const worker = new Worker("./js/swap.worker.js", { type: "module" });
+        const control = new SharedArrayBuffer(4096);
+        worker.postMessage({ type: "init", memory: { buffer: memory.buffer }, control });
+        window.inkOS = { memory, soc, worker, vfs, openApp, closeApp };
+      } catch (e) {
+        console.warn("[InkOS kernel]", e?.message || e);
+      }
+    })();
+
+    function toggleLauncher(force) {
+      const next = typeof force === "boolean" ? force : !launcherWin.hidden;
+      launcherWin.hidden = next;
+      if (!launcherWin.hidden) {
+        mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
+        launcherSearch.focus();
+      }
     }
 
-    // Apps do Hub: fora do try do boot, a grade aparece mesmo se o kernel falhar.
-    import("./js/appload.js").then(({ mountLauncher }) => {
-      const grid = document.querySelector("#app-grid");
-      mountLauncher(grid, desktopEl);
-      grid.addEventListener("click", (e) => {
-        if (e.target.closest("button")) document.querySelector("#launcher-window").hidden = true;
-      });
-    }).catch(console.error);
+    launcherSearch.addEventListener("input", () => {
+      mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
+    });
+    launcherGrid.addEventListener("click", (e) => {
+      if (e.target.closest("button")) toggleLauncher(true);
+    });
+    document.querySelector("#top-apps-btn").addEventListener("click", () => toggleLauncher());
+    document.querySelector("#launcher-close").addEventListener("click", () => toggleLauncher(true));
 
-        document.querySelector("#theme-toggle").addEventListener("click", () => {
-      document.documentElement.dataset.theme = document.documentElement.dataset.theme === "mocha" ? "latte" : "mocha";
-      import("./js/appload.js").then((m) => m.syncTheme()).catch(() => {});
+    const wsRail = document.querySelector("#workspace-rail");
+    document.querySelector("#ws-toggle").addEventListener("click", () => {
+      wsRail.classList.toggle("open");
     });
-    document.querySelector("#open-apps").addEventListener("click", () => {
-      const win = document.querySelector("#launcher-window");
-      win.hidden = !win.hidden;
+    wsRail.querySelectorAll(".ws-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const n = Number(card.dataset.ws || 1);
+        wm.setWorkspace(n);
+        wsRail.querySelectorAll(".ws-card").forEach((c) => c.classList.toggle("active", c === card));
+      });
     });
-    document.querySelector("#launcher-close").addEventListener("click", () => document.querySelector("#launcher-window").hidden = true);
-    document.querySelector("#open-terminal").addEventListener("click", () => document.querySelector("#terminal-window").hidden = false);
-    document.querySelector("#terminal-close").addEventListener("click", () => document.querySelector("#terminal-window").hidden = true);
-    document.querySelector("#fullscreen-button").addEventListener("click", () => desktopEl.requestFullscreen?.());
-    document.querySelector("#clock").textContent = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date());
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(console.error);
+
+    const modBar = document.querySelector("#modifier-bar");
+    document.querySelector("#keys-toggle").addEventListener("click", () => {
+      modBar.classList.toggle("open");
+    });
+    modBar.querySelectorAll("button[data-key]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const active = document.activeElement;
+        if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+          active.dispatchEvent(new KeyboardEvent("keydown", { key: btn.dataset.key, bubbles: true }));
+        }
+      });
+    });
+
+    document.querySelector("#theme-toggle").addEventListener("click", () => {
+      const cur = document.documentElement.dataset.theme;
+      document.documentElement.dataset.theme = cur === "latte" ? "mocha" : "latte";
+      syncTheme();
+    });
+
+    const updateClock = () => {
+      document.querySelector("#clock").textContent = new Intl.DateTimeFormat(undefined, {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date());
+    };
+    updateClock();
+    setInterval(updateClock, 15000);
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(console.error);
+    }
   </script>
 </body>
 </html>
