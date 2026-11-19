@@ -1,45 +1,37 @@
-const pointers = new Map();
+// Ajustes de mobilidade e toque para iPhone e iPad no InkOS
+export function initMobileSupport() {
+  if (typeof document === "undefined") return;
 
-export class MobileInput {
-  constructor({ desktop, framebuffer, wm, worker }) {
-    this.desktop = desktop; this.framebuffer = framebuffer; this.wm = wm; this.worker = worker; this.last = null; this.scrollY = 0;
-    desktop.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") { desktop.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); this.last = { x: e.clientX, y: e.clientY }; } });
-    desktop.addEventListener("pointermove", (e) => this.move(e));
-    const clear = (e) => { pointers.delete(e.pointerId); if (!pointers.size) this.last = null; };
-    desktop.addEventListener("pointerup", clear); desktop.addEventListener("pointercancel", clear);
-    document.querySelectorAll(".modifier-bar [data-key]").forEach((button) => button.addEventListener("click", () => this.key(button.dataset.key)));
-    this.followViewport(); visualViewport?.addEventListener("resize", () => this.followViewport()); visualViewport?.addEventListener("scroll", () => this.followViewport());
-    this.setupExternalDisplay();
-  }
-  move(event) {
-    if (!pointers.has(event.pointerId)) return;
-    const before = pointers.get(event.pointerId); pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    const count = pointers.size;
-    if (count === 1) this.worker?.postMessage({ type: "input", event: "pointer-move", x: event.clientX, y: event.clientY, dx: event.clientX - before.x, dy: event.clientY - before.y });
-    else if (count === 2) this.worker?.postMessage({ type: "input", event: "scroll", deltaX: event.clientX - before.x, deltaY: event.clientY - before.y });
-  }
-  key(key) {
-    const target = document.activeElement;
-    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-      if (key === "Tab") { target.setRangeText("\t", target.selectionStart, target.selectionEnd, "end"); }
-      else if (key.startsWith("Arrow")) target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
-      else target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
-      return;
+  const isTouchDevice =
+    "ontouchstart" in window ||
+    (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0);
+
+  document.documentElement.classList.toggle("is-touch", Boolean(isTouchDevice));
+
+  // Evita zoom indesejado por duplo toque em controlos interativos no Safari mobile
+  let lastTouchEnd = 0;
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      if (e.target.closest("input, textarea, select, iframe")) return;
+      const now = Date.now();
+      if (now - lastTouchEnd <= 280) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    },
+    { passive: false }
+  );
+
+  // Fecha barras laterais ou launcher ao tocar fora numa área limpa do desktop
+  document.addEventListener("pointerdown", (e) => {
+    const wsRail = document.querySelector("#workspace-rail");
+    if (wsRail?.classList.contains("open") && !e.target.closest("#workspace-rail, #ws-toggle")) {
+      wsRail.classList.remove("open");
     }
-    this.worker?.postMessage({ type: "input", event: "key", key });
-  }
-  followViewport() {
-    const viewport = window.visualViewport;
-    const bar = document.querySelector("#modifier-bar");
-    if (viewport && bar) bar.style.bottom = `${Math.max(0, innerHeight - viewport.height - viewport.offsetTop) + 60}px`;
-  }
-  async setupExternalDisplay() {
-    try {
-      if (!("isExtended" in screen)) return;
-      window.addEventListener("inkos:external-display", async () => {
-        if (screen.isExtended && document.querySelector("#framebuffer").requestFullscreen) await document.querySelector("#framebuffer").requestFullscreen();
-      });
-    } catch (error) { console.warn("External display API unavailable", error); }
-  }
-  cycleWorkspace() { this.wm?.cycle(); }
+    const modBar = document.querySelector("#modifier-bar");
+    if (modBar?.classList.contains("open") && !e.target.closest("#modifier-bar, #keys-toggle")) {
+      modBar.classList.remove("open");
+    }
+  });
 }
