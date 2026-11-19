@@ -338,38 +338,56 @@
       });
     });
 
-    const [{ WindowManager }, appload, mobileMod] = await Promise.all([
-      import("./sys/wm.js"),
-      import("./sys/appload.js"),
-      import("./sys/mobile.js").catch(() => null),
-    ]);
+    const tryImportFirst = async (paths) => {
+      let lastErr = null;
+      for (const p of paths) {
+        try {
+          return await import(p);
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error(`Falha ao importar: ${paths.join(", ")}`);
+    };
+
+    let wmMod = null;
+    let appload = null;
+    let mobileMod = null;
+
+    try {
+      [wmMod, appload, mobileMod] = await Promise.all([
+        tryImportFirst(["./sys/wm.js", "./js/wm.js"]).catch(() => null),
+        tryImportFirst(["./sys/appload.js", "./js/appload.js"]).catch(() => null),
+        tryImportFirst(["./sys/mobile.js", "./js/mobile.js"]).catch(() => null),
+      ]);
+    } catch (e) {
+      showToast(e?.message || "Erro ao carregar módulos base");
+    }
 
     let vfs = null;
     try {
-      const vfsMod = await import("./sys/vfs.js");
+      const vfsMod = await tryImportFirst(["./sys/vfs.js", "./js/vfs.js"]);
       vfs = vfsMod.vfs;
       await vfs.init?.();
     } catch (_) {}
 
     let settingsMod = null;
     try {
-      settingsMod = await import("./usr/bin/settings.js");
+      settingsMod = await tryImportFirst(["./usr/bin/settings.js", "./js/apps/settings.js"]);
       settingsMod.applyPrefs?.();
-    } catch (e) {
-      console.warn("[InkOS] settings.js:", e);
-    }
+    } catch (_) {}
 
-    let wm;
+    let wm = null;
     const renderDock = (wins = []) => {
       dockEl.innerHTML = "";
       const pinned = [
         { id: "launcher", label: "Apps", iconId: "i-apps", action: () => toggleLauncher() },
-        { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload.openApp("finder", desktopEl) },
-        { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload.openApp("browser", desktopEl) },
-        { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload.openApp("shell", desktopEl) },
-        { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload.openApp("cmdexe", desktopEl) },
-        { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload.openApp("monitor", desktopEl) },
-        { id: "settings", label: "Ajustes", iconId: "i-settings", action: () => appload.openApp("settings", desktopEl) },
+        { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload?.openApp?.("finder", desktopEl) },
+        { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload?.openApp?.("browser", desktopEl) },
+        { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload?.openApp?.("shell", desktopEl) },
+        { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload?.openApp?.("cmdexe", desktopEl) },
+        { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload?.openApp?.("monitor", desktopEl) },
+        { id: "settings", label: "Ajustes", iconId: "i-settings", action: () => appload?.openApp?.("settings", desktopEl) },
       ];
       for (const p of pinned) {
         const b = document.createElement("button");
@@ -380,10 +398,10 @@
         if (runningMatch?.focused) b.classList.add("focused");
         b.innerHTML = `${svgIcon(p.iconId, 20)}<span>${p.label}</span>`;
         b.onclick = () => {
-          if (runningMatch && runningMatch.focused && !runningMatch.minimized) {
+          if (wm && runningMatch && runningMatch.focused && !runningMatch.minimized) {
             wm.minimize(runningMatch.id);
           } else {
-            p.action();
+            p.action?.();
           }
         };
         dockEl.append(b);
@@ -402,6 +420,7 @@
           const shortTitle = w.title.length > 12 ? w.title.slice(0, 11) + "…" : w.title;
           b.innerHTML = `${svgIcon("i-window", 18)}<span>${shortTitle}</span>`;
           b.onclick = () => {
+            if (!wm) return;
             if (w.focused && !w.minimized) wm.minimize(w.id);
             else wm.focus(w.id);
           };
@@ -410,65 +429,69 @@
       }
     };
 
-    wm = new WindowManager(desktopEl, { onChange: renderDock });
-    appload.bindWindowManager(wm);
+    if (wmMod?.WindowManager) {
+      wm = new wmMod.WindowManager(desktopEl, { onChange: renderDock });
+      appload?.bindWindowManager?.(wm);
+    }
     mobileMod?.installMobileHelpers?.({ desktopEl, dockEl, launcherWin, wm });
     renderDock([]);
 
-    const lazyBin = (path, exportName, fallbackMsg) => async (el, ctx) => {
+    const lazyBin = (paths, exportName, fallbackMsg) => async (el, ctx) => {
       try {
-        const mod = await import(path);
+        const mod = await tryImportFirst(paths);
         return await mod[exportName](el, {
           ...ctx,
           vfs,
           wm,
-          closeApp: (id) => appload.closeApp(id),
-          syncTheme: appload.syncTheme,
+          closeApp: (id) => appload?.closeApp?.(id),
+          syncTheme: appload?.syncTheme,
         });
       } catch (e) {
         el.innerHTML = `<div style="padding:16px;font-size:13px;line-height:1.5;">
-          <strong>Módulo pendente:</strong> <code>${path}</code><br>
+          <strong>Módulo pendente:</strong> <code>${paths.join(" / ")}</code><br>
           <span style="color:var(--muted);">${fallbackMsg} (${e.message})</span>
         </div>`;
       }
     };
 
-    appload.registerSystemBin("finder", {
-      title: "Finder — Memória Interna InkOS",
-      width: 820,
-      height: 520,
-      mount: lazyBin("./usr/bin/finder.js", "mountFinder", "Adicione o ficheiro de finder ao repositório."),
-    });
-    appload.registerSystemBin("browser", {
-      title: "InkBrowser",
-      width: 900,
-      height: 600,
-      mount: lazyBin("./usr/bin/browser.js", "mountBrowser", "Adicione o ficheiro de browser ao repositório."),
-    });
-    appload.registerSystemBin("shell", {
-      title: "Alpine Linux — InkShell",
-      width: 780,
-      height: 480,
-      mount: lazyBin("./usr/bin/terminal.js", "mountTerminal", "Adicione o ficheiro de terminal ao repositório."),
-    });
-    appload.registerSystemBin("cmdexe", {
-      title: "CMD & Instalador .EXE",
-      width: 800,
-      height: 520,
-      mount: lazyBin("./usr/bin/cmd-exe.js", "mountCmdExe", "Adicione o ficheiro de cmd-exe ao repositório."),
-    });
-    appload.registerSystemBin("monitor", {
-      title: "Monitor de Sistema",
-      width: 680,
-      height: 500,
-      mount: lazyBin("./usr/bin/monitor.js", "mountMonitor", "Adicione o ficheiro de monitor ao repositório."),
-    });
-    appload.registerSystemBin("settings", {
-      title: "Configurações & Planos de Fundo",
-      width: 740,
-      height: 500,
-      mount: lazyBin("./usr/bin/settings.js", "mountSettings", "Adicione o ficheiro de settings ao repositório."),
-    });
+    if (appload?.registerSystemBin) {
+      appload.registerSystemBin("finder", {
+        title: "Finder — Memória Interna InkOS",
+        width: 820,
+        height: 520,
+        mount: lazyBin(["./usr/bin/finder.js", "./js/apps/finder.js"], "mountFinder", "Ficheiro de finder em falta."),
+      });
+      appload.registerSystemBin("browser", {
+        title: "InkBrowser",
+        width: 900,
+        height: 600,
+        mount: lazyBin(["./usr/bin/browser.js", "./js/apps/browser.js"], "mountBrowser", "Ficheiro de browser em falta."),
+      });
+      appload.registerSystemBin("shell", {
+        title: "Alpine Linux — InkShell",
+        width: 780,
+        height: 480,
+        mount: lazyBin(["./usr/bin/terminal.js", "./js/apps/terminal.js"], "mountTerminal", "Ficheiro de terminal em falta."),
+      });
+      appload.registerSystemBin("cmdexe", {
+        title: "CMD & Instalador .EXE",
+        width: 800,
+        height: 520,
+        mount: lazyBin(["./usr/bin/cmd-exe.js", "./js/apps/cmd-exe.js"], "mountCmdExe", "Ficheiro de cmd-exe em falta."),
+      });
+      appload.registerSystemBin("monitor", {
+        title: "Monitor de Sistema",
+        width: 680,
+        height: 500,
+        mount: lazyBin(["./usr/bin/monitor.js", "./js/apps/monitor.js"], "mountMonitor", "Ficheiro de monitor em falta."),
+      });
+      appload.registerSystemBin("settings", {
+        title: "Configurações & Planos de Fundo",
+        width: 740,
+        height: 500,
+        mount: lazyBin(["./usr/bin/settings.js", "./js/apps/settings.js"], "mountSettings", "Ficheiro de settings em falta."),
+      });
+    }
 
     (async () => {
       const diag = {
@@ -481,8 +504,8 @@
       window.inkOS = {
         diag,
         vfs,
-        openApp: appload.openApp,
-        closeApp: appload.closeApp,
+        openApp: appload?.openApp,
+        closeApp: appload?.closeApp,
       };
 
       if (!window.crossOriginIsolated) {
@@ -571,16 +594,20 @@
     })();
 
     function toggleLauncher(force) {
+      if (!appload?.mountLauncher) {
+        showToast("Lançador indisponível (appload não carregou)");
+        return;
+      }
       const next = typeof force === "boolean" ? force : !launcherWin.hidden;
       launcherWin.hidden = next;
       if (!launcherWin.hidden) {
-        appload.mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
+        appload.mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch((e) => showToast(e.message));
         launcherSearch.focus();
       }
     }
 
     launcherSearch.addEventListener("input", () => {
-      appload.mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
+      appload?.mountLauncher?.(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch((e) => showToast(e.message));
     });
     launcherGrid.addEventListener("click", (e) => {
       if (e.target.closest("button")) toggleLauncher(true);
@@ -594,11 +621,11 @@
       const next = cur === "cachy-light" ? "cachy-dark" : "cachy-light";
       document.documentElement.dataset.theme = next;
       if (settingsMod?.savePrefs) settingsMod.savePrefs({ theme: next });
-      appload.syncTheme?.();
+      appload?.syncTheme?.();
     });
 
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(console.error);
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
     }
   </script>
 </body>
