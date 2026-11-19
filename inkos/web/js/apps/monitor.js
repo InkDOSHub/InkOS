@@ -27,6 +27,11 @@ export function mountMonitor(root, { wm, vfs, closeApp }) {
         </div>
       </div>
 
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:12px;display:grid;gap:4px;">
+        <div style="font-weight:600;">Diagnóstico Kernel InkSoC &amp; Swap Worker</div>
+        <div id="mon-ink-diag" style="color:var(--muted);word-break:break-word;">A aguardar leitura...</div>
+      </div>
+
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;">
         <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:6px;">
           <span>Histórico de Quadros (FPS)</span>
@@ -51,6 +56,7 @@ export function mountMonitor(root, { wm, vfs, closeApp }) {
   const wasmEl = root.querySelector("#mon-wasm");
   const diskEl = root.querySelector("#mon-disk");
   const vfsModeEl = root.querySelector("#mon-vfs-mode");
+  const inkDiagEl = root.querySelector("#mon-ink-diag");
   const procsEl = root.querySelector("#mon-procs");
   const countEl = root.querySelector("#mon-proc-count");
   const canvas = root.querySelector("#mon-chart");
@@ -101,18 +107,27 @@ export function mountMonitor(root, { wm, vfs, closeApp }) {
     const wasmBytes = window.inkOS?.memory?.buffer?.byteLength || 0;
     wasmEl.textContent = wasmBytes ? `Wasm SAB: ${(wasmBytes / 1048576).toFixed(0)} MiB` : "Kernel Wasm: Standby";
 
+    const d = window.inkOS?.diag;
+    if (d) {
+      inkDiagEl.textContent =
+        `Wasm: ${d.wasmLoaded ? "OK" : "Falha"} • WASI: ${d.wasiCompiled ? "OK" : "Pendente"} • Worker: ${d.workerReady ? "OK" : "Off"}` +
+        (d.lastError ? ` • Erro: ${d.lastError}` : "");
+    } else {
+      inkDiagEl.textContent = "Sem objeto window.inkOS.diag disponível.";
+    }
+
     if (navigator.storage?.estimate) {
       try {
         const est = await navigator.storage.estimate();
         diskEl.textContent = `${((est.usage || 0) / 1048576).toFixed(2)} MB`;
       } catch (_) {}
     }
+
     vfsModeEl.textContent = `Modo VFS: ${vfs ? vfs.mode.toUpperCase() : "N/A"}`;
 
     const wins = wm ? wm.snapshot() : [];
     countEl.textContent = `${wins.length} ${wins.length === 1 ? "processo" : "processos"}`;
     procsEl.innerHTML = "";
-
     if (!wins.length) {
       procsEl.innerHTML = `<div style="padding:10px;font-size:12px;color:var(--muted);">Nenhuma janela aberta.</div>`;
       return;
