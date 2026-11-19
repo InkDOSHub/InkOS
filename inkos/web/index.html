@@ -38,10 +38,10 @@
     <section class="window" id="launcher-window" hidden aria-label="Aplicativos InkOS">
       <header class="window-title" data-drag-handle>
         <svg><use href="./icons.svg#i-desktop"></use></svg>
-        <span>Aplicativos InkOS (25 Módulos Wasm)</span>
+        <span>Aplicativos InkOS (25 apps do Hub)</span>
         <button id="launcher-close" aria-label="Fechar aplicativos">×</button>
       </header>
-      <div id="app-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:10px;padding:12px;max-height:55vh;overflow:auto;"></div>
+      <div id="app-grid" style="max-height:55vh;overflow:auto;"></div>
     </section>
   </main>
 
@@ -99,21 +99,6 @@
       new MobileInput({ desktop: desktopEl, framebuffer: document.querySelector("#framebuffer"), wm, worker });
       new Terminal({ worker, output: out, form: document.querySelector("#terminal-form"), input: document.querySelector("#terminal-input") });
 
-      import("./js/apps.js").then(({ APPS, launchApp }) => {
-        const grid = document.querySelector("#app-grid");
-        if (!Array.isArray(APPS)) return;
-        APPS.forEach((app) => {
-          const btn = document.createElement("button");
-          btn.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border-radius:10px;border:1px solid var(--surface1,#45475a);background:var(--surface0,#313244);color:var(--text,#cdd6f4);cursor:pointer;";
-          btn.innerHTML = `<svg width="22" height="22"><use href="./icons.svg#${app.icon || "i-desktop"}"></use></svg><span style="font-size:12px">${app.name || app.id}</span>`;
-          btn.onclick = () => {
-            document.querySelector("#launcher-window").hidden = true;
-            if (typeof launchApp === "function") launchApp(app, desktopEl);
-          };
-          grid.appendChild(btn);
-        });
-      }).catch(() => {});
-
       document.querySelector("#run-bench").addEventListener("click", async () => {
         document.querySelector("#terminal-window").hidden = false;
         out.textContent += "\n[InkBench] Executando suíte JIT Wasm + OPFS + GPU...";
@@ -170,6 +155,15 @@
       out.textContent = `Falha no boot do InkSoC: ${e.message}`;
       console.error(e);
     }
+
+    // Apps do Hub: fora do try do boot, a grade aparece mesmo se o kernel falhar.
+    import("./js/appload.js").then(({ mountLauncher }) => {
+      const grid = document.querySelector("#app-grid");
+      mountLauncher(grid, desktopEl);
+      grid.addEventListener("click", (e) => {
+        if (e.target.closest("button")) document.querySelector("#launcher-window").hidden = true;
+      });
+    }).catch(console.error);
 
     document.querySelector("#theme-toggle").addEventListener("click", () => {
       document.documentElement.dataset.theme = document.documentElement.dataset.theme === "mocha" ? "latte" : "mocha";
