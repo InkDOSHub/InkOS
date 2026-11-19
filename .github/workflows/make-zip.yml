@@ -13,36 +13,67 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build inkos-bundle.zip from gemini-code-1795097281585.txt
+      - name: Build inkos-bundle.zip with .cargo/config.toml
         run: |
-          test -f gemini-code-1795097281585.txt
           python3 - <<'EOF'
           from pathlib import Path
           import re, zipfile
 
-          text = Path("gemini-code-1795097281585.txt").read_text(encoding="utf-8")
-          parts = re.split(r"^=== FILE: (.+?) ===\r?\n", text, flags=re.MULTILINE)
+          cargo_cfg = """[build]
+          target = "wasm32-unknown-unknown"
 
-          count = 0
-          with zipfile.ZipFile("inkos-bundle.zip", "w", compression=zipfile.ZIP_DEFLATED) as zf:
+          [target.wasm32-unknown-unknown]
+          rustflags = ["-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"]
+          """
+
+          entries = {}
+          txt_candidates = sorted(Path(".").glob("*.txt"))
+          for txt in txt_candidates:
+              text = txt.read_text(encoding="utf-8")
+              parts = re.split(r"^=== FILE: (.+?) ===\r?\n", text, flags=re.MULTILINE)
               for i in range(1, len(parts), 2):
                   rel_path = parts[i].strip().lstrip("./")
+                  if rel_path == "cargo/config.toml":
+                      rel_path = ".cargo/config.toml"
                   content = parts[i + 1]
                   if content.endswith("\n"):
                       content = content[:-1]
-                  zf.writestr(rel_path, content + ("\n" if content else ""))
-                  count += 1
+                  entries[rel_path] = content + ("\n" if content else "")
 
-          print(f"Packed {count} files into inkos-bundle.zip")
+          for path_str in [
+              "rust-toolchain.toml",
+              ".cargo/config.toml",
+              "inkos/Cargo.toml",
+              "inkos/src/lib.rs",
+              "inkos/inkos-wasm-bundle.json",
+              "inkos/web/_headers",
+              "inkos/web/manifest.json",
+              "inkos/web/sw.js",
+              "inkos/web/index.html",
+              "inkos/web/usr/apps/hub-runtime.js",
+              "scripts/build.sh",
+          ]:
+              p = Path(path_str)
+              if p.exists() and path_str not in entries:
+                  entries[path_str] = p.read_text(encoding="utf-8")
+
+          entries[".cargo/config.toml"] = cargo_cfg
+
+          with zipfile.ZipFile("inkos-bundle.zip", "w", compression=zipfile.ZIP_DEFLATED) as zf:
+              for rel_path, content in entries.items():
+                  zf.writestr(rel_path, content)
+
+          print(f"Packed {len(entries)} files into inkos-bundle.zip")
           EOF
-          rm -f gemini-code-1795097281585.txt
+          rm -f *.txt
           ls -lh inkos-bundle.zip
 
-      - name: Commit zip to main
+      - name: Commit zip and remove legacy cargo/config.toml
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -rf --ignore-unmatch cargo
+          git rm -f --ignore-unmatch "*.txt"
           git add inkos-bundle.zip
-          git rm -f --ignore-unmatch gemini-code-1795097281585.txt
-          git commit -m "chore: generate inkos-bundle.zip" || true
+          git commit -m "chore: move config to .cargo/config.toml and pack bundle" || true
           git push origin HEAD:main
