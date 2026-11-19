@@ -1,310 +1,274 @@
-// Window Manager do InkOS — estilo macOS (semáforos), arrastar, redimensionar, minimizar, maximizar e workspaces
+// Gestor de Janelas acelerado por GPU (translate3d) com Workspaces e redimensionamento em 8 direções
+const svgIcon = (id, size = 14) =>
+  `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
+
 export class WindowManager {
   constructor(desktopEl, { onChange } = {}) {
-    this.desktop = desktopEl;
+    this.desktopEl = desktopEl;
     this.onChange = onChange || (() => {});
-    this.windows = new Map(); // id -> record
-    this.zCounter = 20;
-    this.activeId = null;
+    this.windows = new Map();
+    this.zCounter = 10;
     this.workspace = 1;
   }
 
   setWorkspace(ws) {
-    this.workspace = ws;
-    for (const rec of this.windows.values()) {
-      const visible = !rec.minimized && rec.workspace === this.workspace;
-      rec.el.style.display = visible ? "flex" : "none";
+    this.workspace = Number(ws) || 1;
+    for (const w of this.windows.values()) {
+      const visible = w.workspace === this.workspace && !w.minimized;
+      w.el.style.display = visible ? "flex" : "none";
     }
+    this._emit();
+  }
+
+  _applyGeometry(w) {
+    if (w.maximized) {
+      w.el.style.left = "0px";
+      w.el.style.top = "0px";
+      w.el.style.width = `${this.desktopEl.clientWidth}px`;
+      w.el.style.height = `${this.desktopEl.clientHeight}px`;
+      w.el.style.transform = "translate3d(0px, 0px, 0)";
+      w.el.style.borderRadius = "0px";
+      return;
+    }
+    w.el.style.left = "0px";
+    w.el.style.top = "0px";
+    w.el.style.width = `${Math.max(320, w.width)}px`;
+    w.el.style.height = `${Math.max(220, w.height)}px`;
+    w.el.style.transform = `translate3d(${Math.round(w.x)}px, ${Math.round(w.y)}px, 0)`;
+    w.el.style.borderRadius = "";
+  }
+
+  _emit() {
     this.onChange(this.snapshot());
   }
 
   snapshot() {
-    return [...this.windows.values()].map((r) => ({
-      id: r.id,
-      title: r.title,
-      icon: r.icon || "i-window",
-      minimized: r.minimized,
-      maximized: r.maximized,
-      workspace: r.workspace,
-      focused: this.activeId === r.id && !r.minimized,
-    }));
+    const list = [];
+    for (const w of this.windows.values()) {
+      list.push({
+        id: w.id,
+        title: w.title,
+        workspace: w.workspace,
+        minimized: w.minimized,
+        maximized: w.maximized,
+        focused: w.focused,
+        x: w.x,
+        y: w.y,
+        width: w.width,
+        height: w.height,
+      });
+    }
+    return list;
+  }
+
+  createWindow({ id, title, width = 760, height = 500, x, y, workspace, onClose, renderContent }) {
+    if (this.windows.has(id)) {
+      const existing = this.windows.get(id);
+      if (existing.workspace !== this.workspace) {
+        this.setWorkspace(existing.workspace);
+      }
+      existing.minimized = false;
+      existing.el.style.display = "flex";
+      this.focus(id);
+      return existing.bodyEl;
+    }
+
+    const dw = Math.max(360, this.desktopEl.clientWidth || window.innerWidth);
+    const dh = Math.max(260, this.desktopEl.clientHeight || window.innerHeight - 84);
+    const winW = Math.min(width, Math.max(320, dw - 24));
+    const winH = Math.min(height, Math.max(220, dh - 24));
+    const offset = (this.windows.size % 6) * 22;
+    const initX = typeof x === "number" ? x : Math.max(12, Math.round((dw - winW) / 2 + offset));
+    const initY = typeof y === "number" ? y : Math.max(12, Math.round((dh - winH) / 2 + offset));
+
+    const el = document.createElement("section");
+    el.className = "win";
+    el.dataset.winId = id;
+    el.innerHTML = `
+      <div class="win-titlebar">
+        <div class="win-traffic">
+          <button class="win-btn close" type="button" title="Fechar" aria-label="Fechar">${svgIcon("i-close", 10)}</button>
+          <button class="win-btn min" type="button" title="Minimizar" aria-label="Minimizar">${svgIcon("i-min", 10)}</button>
+          <button class="win-btn max" type="button" title="Maximizar" aria-label="Maximizar">${svgIcon("i-max", 10)}</button>
+        </div>
+        <div class="win-title"></div>
+      </div>
+      <div class="win-body"></div>
+      <div class="resize-handle n" data-dir="n"></div>
+      <div class="resize-handle s" data-dir="s"></div>
+      <div class="resize-handle e" data-dir="e"></div>
+      <div class="resize-handle w" data-dir="w"></div>
+      <div class="resize-handle ne" data-dir="ne"></div>
+      <div class="resize-handle nw" data-dir="nw"></div>
+      <div class="resize-handle se" data-dir="se"></div>
+      <div class="resize-handle sw" data-dir="sw"></div>
+    `;
+
+    const titleEl = el.querySelector(".win-title");
+    const bodyEl = el.querySelector(".win-body");
+    titleEl.textContent = title || id;
+
+    const record = {
+      id,
+      title: title || id,
+      workspace: Number(workspace) || this.workspace,
+      x: initX,
+      y: initY,
+      width: winW,
+      height: winH,
+      minimized: false,
+      maximized: false,
+      focused: false,
+      el,
+      bodyEl,
+      onClose: onClose || null,
+      cleanup: null,
+    };
+
+    this.windows.set(id, record);
+    this._applyGeometry(record);
+    this.desktopEl.append(el);
+    this.focus(id);
+
+    el.addEventListener("pointerdown", () => this.focus(id), { passive: true });
+
+    el.querySelector(".win-btn.close").onclick = (ev) => {
+      ev.stopPropagation();
+      this.close(id);
+    };
+    el.querySelector(".win-btn.min").onclick = (ev) => {
+      ev.stopPropagation();
+      this.minimize(id);
+    };
+    el.querySelector(".win-btn.max").onclick = (ev) => {
+      ev.stopPropagation();
+      this.toggleMaximize(id);
+    };
+
+    const titlebar = el.querySelector(".win-titlebar");
+    titlebar.addEventListener("pointerdown", (ev) => {
+      if (ev.target.closest("button") || record.maximized) return;
+      ev.preventDefault();
+      this.focus(id);
+      const startX = ev.clientX;
+      const startY = ev.clientY;
+      const origX = record.x;
+      const origY = record.y;
+      titlebar.setPointerCapture(ev.pointerId);
+
+      const onMove = (mEv) => {
+        const maxX = Math.max(0, this.desktopEl.clientWidth - 120);
+        const maxY = Math.max(0, this.desktopEl.clientHeight - 40);
+        record.x = Math.min(maxX, Math.max(-record.width + 120, origX + (mEv.clientX - startX)));
+        record.y = Math.min(maxY, Math.max(0, origY + (mEv.clientY - startY)));
+        this._applyGeometry(record);
+      };
+      const onUp = () => {
+        titlebar.removeEventListener("pointermove", onMove);
+        titlebar.removeEventListener("pointerup", onUp);
+        this._emit();
+      };
+      titlebar.addEventListener("pointermove", onMove);
+      titlebar.addEventListener("pointerup", onUp);
+    });
+
+    el.querySelectorAll(".resize-handle").forEach((handle) => {
+      handle.addEventListener("pointerdown", (ev) => {
+        if (record.maximized) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        this.focus(id);
+        const dir = handle.dataset.dir;
+        const startX = ev.clientX;
+        const startY = ev.clientY;
+        const orig = { x: record.x, y: record.y, width: record.width, height: record.height };
+        handle.setPointerCapture(ev.pointerId);
+
+        const onMove = (mEv) => {
+          const dx = mEv.clientX - startX;
+          const dy = mEv.clientY - startY;
+          if (dir.includes("e")) record.width = Math.max(320, orig.width + dx);
+          if (dir.includes("s")) record.height = Math.max(220, orig.height + dy);
+          if (dir.includes("w")) {
+            const nextW = Math.max(320, orig.width - dx);
+            record.x = orig.x + (orig.width - nextW);
+            record.width = nextW;
+          }
+          if (dir.includes("n")) {
+            const nextH = Math.max(220, orig.height - dy);
+            record.y = orig.y + (orig.height - nextH);
+            record.height = nextH;
+          }
+          this._applyGeometry(record);
+        };
+        const onUp = () => {
+          handle.removeEventListener("pointermove", onMove);
+          handle.removeEventListener("pointerup", onUp);
+          this._emit();
+        };
+        handle.addEventListener("pointermove", onMove);
+        handle.addEventListener("pointerup", onUp);
+      });
+    });
+
+    if (typeof renderContent === "function") {
+      Promise.resolve(renderContent(bodyEl))
+        .then((fn) => {
+          if (typeof fn === "function") record.cleanup = fn;
+        })
+        .catch(console.error);
+    }
+
+    this._emit();
+    return bodyEl;
   }
 
   focus(id) {
-    const rec = this.windows.get(id);
-    if (!rec) return;
-    if (rec.workspace !== this.workspace) {
-      this.setWorkspace(rec.workspace);
+    const target = this.windows.get(id);
+    if (!target) return;
+    target.minimized = false;
+    if (target.workspace !== this.workspace) {
+      this.setWorkspace(target.workspace);
     }
-    if (rec.minimized) {
-      rec.minimized = false;
-      rec.el.style.display = "flex";
+    target.el.style.display = "flex";
+    this.zCounter += 1;
+    target.el.style.zIndex = String(this.zCounter);
+    for (const w of this.windows.values()) {
+      w.focused = w.id === id;
+      w.el.classList.toggle("focused", w.focused);
     }
-    this.activeId = id;
-    rec.el.style.zIndex = ++this.zCounter;
-    for (const [k, v] of this.windows) {
-      v.el.classList.toggle("focused", k === id);
-    }
-    this.onChange(this.snapshot());
+    this._emit();
   }
 
   minimize(id) {
-    const rec = this.windows.get(id);
-    if (!rec) return;
-    rec.minimized = true;
-    rec.el.style.display = "none";
-    if (this.activeId === id) this.activeId = null;
-    this.onChange(this.snapshot());
+    const target = this.windows.get(id);
+    if (!target) return;
+    target.minimized = true;
+    target.focused = false;
+    target.el.classList.remove("focused");
+    target.el.style.display = "none";
+    this._emit();
   }
 
   toggleMaximize(id) {
-    const rec = this.windows.get(id);
-    if (!rec) return;
-    const dw = this.desktop.clientWidth;
-    const dh = Math.max(200, this.desktop.clientHeight - 72);
-
-    if (!rec.maximized) {
-      rec.prev = { x: rec.x, y: rec.y, w: rec.w, h: rec.h };
-      rec.maximized = true;
-      rec.x = 0;
-      rec.y = 0;
-      rec.w = dw;
-      rec.h = dh;
-      rec.el.classList.add("maximized");
-    } else {
-      rec.maximized = false;
-      rec.el.classList.remove("maximized");
-      if (rec.prev) {
-        Object.assign(rec, rec.prev);
-      }
-    }
-    this._applyGeom(rec);
+    const target = this.windows.get(id);
+    if (!target) return;
+    target.maximized = !target.maximized;
+    this._applyGeometry(target);
     this.focus(id);
   }
 
   close(id) {
-    const rec = this.windows.get(id);
-    if (!rec) return;
-    try { rec.onClose?.(); } catch (_) {}
-    rec.el.remove();
+    const target = this.windows.get(id);
+    if (!target) return;
+    try {
+      target.cleanup?.();
+    } catch (_) {}
+    target.el.remove();
     this.windows.delete(id);
-    if (this.activeId === id) this.activeId = null;
-    this.onChange(this.snapshot());
-  }
-
-  _applyGeom(rec) {
-    rec.el.style.width = `${Math.round(rec.w)}px`;
-    rec.el.style.height = `${Math.round(rec.h)}px`;
-    rec.el.style.transform = `translate3d(${Math.round(rec.x)}px, ${Math.round(rec.y)}px, 0)`;
-  }
-
-  createWindow({
-    id,
-    title = "Janela",
-    icon = "i-window",
-    width = 760,
-    height = 520,
-    x,
-    y,
-    bodyEl,
-    onClose,
-  }) {
-    if (this.windows.has(id)) {
-      this.focus(id);
-      return this.windows.get(id).el;
-    }
-
-    const dw = this.desktop.clientWidth || window.innerWidth;
-    const dh = Math.max(240, (this.desktop.clientHeight || window.innerHeight) - 72);
-    const mobile = window.innerWidth < 700;
-
-    const w = mobile ? dw : Math.min(width, Math.max(320, dw - 24));
-    const h = mobile ? dh : Math.min(height, Math.max(220, dh - 24));
-    const offset = (this.windows.size % 6) * 24;
-    const posX = mobile ? 0 : (typeof x === "number" ? x : Math.min(24 + offset, Math.max(8, dw - w - 12)));
-    const posY = mobile ? 0 : (typeof y === "number" ? y : Math.min(18 + offset, Math.max(8, dh - h - 12)));
-
-    const el = document.createElement("section");
-    el.className = "window";
-    el.dataset.winId = id;
-
-    const header = document.createElement("header");
-    header.className = "window-title";
-    header.dataset.dragHandle = "1";
-
-    const controls = document.createElement("div");
-    controls.className = "mac-lights";
-
-    const btnClose = document.createElement("button");
-    btnClose.className = "mac-light close";
-    btnClose.type = "button";
-    btnClose.title = "Fechar";
-    btnClose.textContent = "×";
-    btnClose.onclick = (e) => { e.stopPropagation(); this.close(id); };
-
-    const btnMin = document.createElement("button");
-    btnMin.className = "mac-light min";
-    btnMin.type = "button";
-    btnMin.title = "Minimizar";
-    btnMin.textContent = "−";
-    btnMin.onclick = (e) => { e.stopPropagation(); this.minimize(id); };
-
-    const btnMax = document.createElement("button");
-    btnMax.className = "mac-light max";
-    btnMax.type = "button";
-    btnMax.title = "Maximizar";
-    btnMax.textContent = "+";
-    btnMax.onclick = (e) => { e.stopPropagation(); this.toggleMaximize(id); };
-
-    controls.append(btnClose, btnMin, btnMax);
-
-    const titleSpan = document.createElement("span");
-    titleSpan.className = "win-title-text";
-    titleSpan.style.textAlign = "center";
-    titleSpan.textContent = title;
-
-    const spacer = document.createElement("div");
-    spacer.style.width = "48px";
-
-    header.append(controls, titleSpan, spacer);
-
-    const body = document.createElement("div");
-    body.className = "window-body";
-    if (bodyEl) body.append(bodyEl);
-
-    el.append(header, body);
-
-    const dirs = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
-    for (const d of dirs) {
-      const hEl = document.createElement("div");
-      hEl.className = `resize-handle resize-${d}`;
-      hEl.dataset.resizeDir = d;
-      el.append(hEl);
-    }
-
-    const rec = {
-      id,
-      title,
-      icon,
-      el,
-      body,
-      x: posX,
-      y: posY,
-      w,
-      h,
-      minimized: false,
-      maximized: false,
-      workspace: this.workspace,
-      onClose,
-    };
-
-    this.windows.set(id, rec);
-    this._applyGeom(rec);
-    this.desktop.append(el);
-    this._bindInteractions(rec, header);
-    this.focus(id);
-    return el;
-  }
-
-  _bindInteractions(rec, header) {
-    rec.el.addEventListener("pointerdown", () => this.focus(rec.id), { passive: true });
-
-    header.addEventListener("dblclick", (e) => {
-      if (e.target.closest("button")) return;
-      this.toggleMaximize(rec.id);
-    });
-
-    let dragState = null;
-    header.addEventListener("pointerdown", (e) => {
-      if (e.target.closest("button") || rec.maximized || window.innerWidth < 700) return;
-      dragState = {
-        pointerId: e.pointerId,
-        startX: e.clientX,
-        startY: e.clientY,
-        origX: rec.x,
-        origY: rec.y,
-      };
-      header.setPointerCapture(e.pointerId);
-    });
-
-    header.addEventListener("pointermove", (e) => {
-      if (!dragState || dragState.pointerId !== e.pointerId) return;
-      const dw = this.desktop.clientWidth;
-      const dh = Math.max(120, this.desktop.clientHeight - 40);
-      rec.x = Math.min(Math.max(-rec.w + 100, dragState.origX + (e.clientX - dragState.startX)), dw - 80);
-      rec.y = Math.min(Math.max(0, dragState.origY + (e.clientY - dragState.startY)), dh);
-      this._applyGeom(rec);
-    });
-
-    const endDrag = (e) => {
-      if (dragState && dragState.pointerId === e.pointerId) dragState = null;
-    };
-    header.addEventListener("pointerup", endDrag);
-    header.addEventListener("pointercancel", endDrag);
-
-    let resizeState = null;
-    rec.el.querySelectorAll(".resize-handle").forEach((handle) => {
-      handle.addEventListener("pointerdown", (e) => {
-        if (rec.maximized || window.innerWidth < 700) return;
-        e.stopPropagation();
-        resizeState = {
-          dir: handle.dataset.resizeDir,
-          pointerId: e.pointerId,
-          startX: e.clientX,
-          startY: e.clientY,
-          origX: rec.x,
-          origY: rec.y,
-          origW: rec.w,
-          origH: rec.h,
-        };
-        handle.setPointerCapture(e.pointerId);
-      });
-
-      handle.addEventListener("pointermove", (e) => {
-        if (!resizeState || resizeState.pointerId !== e.pointerId) return;
-        const dx = e.clientX - resizeState.startX;
-        const dy = e.clientY - resizeState.startY;
-        const minW = 280;
-        const minH = 180;
-        const dw = this.desktop.clientWidth;
-        const dh = Math.max(200, this.desktop.clientHeight - 64);
-
-        let nx = resizeState.origX;
-        let ny = resizeState.origY;
-        let nw = resizeState.origW;
-        let nh = resizeState.origH;
-
-        if (resizeState.dir.includes("e")) {
-          nw = Math.min(dw - nx, Math.max(minW, resizeState.origW + dx));
-        }
-        if (resizeState.dir.includes("s")) {
-          nh = Math.min(dh - ny, Math.max(minH, resizeState.origH + dy));
-        }
-        if (resizeState.dir.includes("w")) {
-          const maxDx = resizeState.origW - minW;
-          const clampedDx = Math.min(maxDx, Math.max(-resizeState.origX, dx));
-          nx = resizeState.origX + clampedDx;
-          nw = resizeState.origW - clampedDx;
-        }
-        if (resizeState.dir.includes("n")) {
-          const maxDy = resizeState.origH - minH;
-          const clampedDy = Math.min(maxDy, Math.max(-resizeState.origY, dy));
-          ny = resizeState.origY + clampedDy;
-          nh = resizeState.origH - clampedDy;
-        }
-
-        rec.x = nx;
-        rec.y = ny;
-        rec.w = nw;
-        rec.h = nh;
-        this._applyGeom(rec);
-      });
-
-      const endResize = (e) => {
-        if (resizeState && resizeState.pointerId === e.pointerId) resizeState = null;
-      };
-      handle.addEventListener("pointerup", endResize);
-      handle.addEventListener("pointercancel", endResize);
-    });
+    try {
+      target.onClose?.();
+    } catch (_) {}
+    this._emit();
   }
 }
