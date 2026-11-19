@@ -1,18 +1,21 @@
-// Finder — Gerenciador de arquivos da memória interna do InkOS
+// Finder — Gerenciador de arquivos da memória interna do InkOS (sem emojis, ícones SVG)
+const svg = (id, size = 16) =>
+  `<svg width="${size}" height="${size}" style="flex:0 0 auto;" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
+
 export function mountFinder(root, { vfs, openApp }) {
   let cwd = "/Home";
   let selected = null;
 
   root.innerHTML = `
     <div style="display:flex;flex:1;min-height:0;height:100%;">
-      <aside style="width:168px;padding:10px;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;gap:4px;font-size:12.5px;">
-        <div style="font-size:10.5px;text-transform:uppercase;color:var(--muted);padding:4px 8px;">Locais</div>
-        <button data-nav="/Home" type="button" class="top-pill" style="justify-content:flex-start;">🏠 Home</button>
-        <button data-nav="/Documents" type="button" class="top-pill" style="justify-content:flex-start;">📄 Documents</button>
-        <button data-nav="/Downloads" type="button" class="top-pill" style="justify-content:flex-start;">⬇ Downloads</button>
-        <button data-nav="/Programs" type="button" class="top-pill" style="justify-content:flex-start;">⚙ Programs</button>
-        <button data-nav="/" type="button" class="top-pill" style="justify-content:flex-start;">💾 Raiz (/)</button>
-        <div style="margin-top:auto;font-size:11px;color:var(--muted);padding:8px;">Storage: ${vfs.mode.toUpperCase()}</div>
+      <aside style="width:172px;padding:10px;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;gap:4px;font-size:12.5px;">
+        <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:4px 8px;">Favoritos</div>
+        <button data-nav="/Home" type="button" class="top-pill" style="justify-content:flex-start;">${svg("i-home")} Home</button>
+        <button data-nav="/Documents" type="button" class="top-pill" style="justify-content:flex-start;">${svg("i-file")} Documents</button>
+        <button data-nav="/Downloads" type="button" class="top-pill" style="justify-content:flex-start;">${svg("i-download")} Downloads</button>
+        <button data-nav="/Programs" type="button" class="top-pill" style="justify-content:flex-start;">${svg("i-exe")} Programs</button>
+        <button data-nav="/" type="button" class="top-pill" style="justify-content:flex-start;">${svg("i-drive")} Macintosh HD (/)</button>
+        <div style="margin-top:auto;font-size:11px;color:var(--muted);padding:8px;">Volume: ${vfs.mode.toUpperCase()}</div>
       </aside>
       <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
         <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--panel-solid);align-items:center;">
@@ -31,7 +34,7 @@ export function mountFinder(root, { vfs, openApp }) {
           <button id="f-del" class="top-pill" type="button" disabled style="color:var(--danger);">Excluir</button>
         </div>
         <div id="f-list" style="flex:1;overflow:auto;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;align-content:start;"></div>
-        <div id="f-preview" style="max-height:150px;overflow:auto;border-top:1px solid var(--border);padding:8px 12px;font-size:12px;background:var(--surface);color:var(--muted);">Selecione um arquivo ou pasta.</div>
+        <div id="f-preview" style="max-height:140px;overflow:auto;border-top:1px solid var(--border);padding:8px 12px;font-size:12px;background:var(--surface);color:var(--muted);">Selecione um arquivo ou pasta.</div>
       </div>
     </div>
   `;
@@ -68,8 +71,15 @@ export function mountFinder(root, { vfs, openApp }) {
       card.type = "button";
       const isSel = selected?.path === item.path;
       card.style.cssText = `appearance:none;border:1px solid ${isSel ? "var(--accent)" : "var(--border)"};background:${isSel ? "var(--accent-soft)" : "var(--surface)"};color:var(--text);border-radius:10px;padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font-size:12px;`;
-      const icon = item.type === "dir" ? "📁" : item.name.endsWith(".exe") ? "⚙" : item.name.endsWith(".pdf") ? "📕" : "📄";
-      card.innerHTML = `<span style="font-size:22px;line-height:1;">${icon}</span><span style="word-break:break-word;">${item.name}</span><span style="font-size:10px;color:var(--muted);">${item.type === "dir" ? "Pasta" : `${item.size} B`}</span>`;
+      const iconId =
+        item.type === "dir"
+          ? "i-folder"
+          : item.name.toLowerCase().endsWith(".exe")
+          ? "i-exe"
+          : item.name.toLowerCase().endsWith(".pdf")
+          ? "i-pdf"
+          : "i-file";
+      card.innerHTML = `${svg(iconId, 28)}<span style="word-break:break-word;">${item.name}</span><span style="font-size:10px;color:var(--muted);">${item.type === "dir" ? "Pasta" : `${item.size} B`}</span>`;
 
       card.onclick = async () => {
         selected = item;
