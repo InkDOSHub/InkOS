@@ -44,7 +44,6 @@
 
   <main id="desktop" class="desktop" aria-label="InkOS desktop">
     <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
-
     <section class="launcher-overlay" id="launcher-window" hidden aria-label="Applications Launcher">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <strong>Applications — InkDOS Hub &amp; Nativos</strong>
@@ -78,7 +77,6 @@
     const launcherGrid = document.querySelector("#app-grid");
     const launcherSearch = document.querySelector("#launcher-search");
     const badge = document.querySelector("#isolation-badge");
-
     badge.textContent = window.crossOriginIsolated ? "SAB • JIT Ativo" : "Modo Compatibilidade";
 
     const svgIcon = (id, size = 20) =>
@@ -146,7 +144,6 @@
         { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload.openApp("monitor", desktopEl) },
         { id: "settings", label: "Ajustes", iconId: "i-settings", action: () => appload.openApp("settings", desktopEl) },
       ];
-
       for (const p of pinned) {
         const b = document.createElement("button");
         b.type = "button";
@@ -170,7 +167,6 @@
         const sep = document.createElement("div");
         sep.className = "dock-sep";
         dockEl.append(sep);
-
         for (const w of openWins) {
           const b = document.createElement("button");
           b.type = "button";
@@ -231,41 +227,128 @@
       height: 520,
       mount: lazyNative("./js/apps/finder.js", "mountFinder", "Crie inkos/web/js/apps/finder.js no repositório."),
     });
-
     appload.registerNativeApp("browser", {
       title: "InkBrowser",
       width: 900,
       height: 600,
       mount: lazyNative("./js/apps/browser.js", "mountBrowser", "Crie inkos/web/js/apps/browser.js no repositório."),
     });
-
     appload.registerNativeApp("shell", {
       title: "Alpine Linux — InkShell",
       width: 780,
       height: 480,
       mount: lazyNative("./js/apps/shell.js", "mountShell", "Crie inkos/web/js/apps/shell.js no repositório."),
     });
-
     appload.registerNativeApp("cmdexe", {
       title: "CMD & Instalador .EXE",
       width: 800,
       height: 520,
       mount: lazyNative("./js/apps/cmd-exe.js", "mountCmdExe", "Crie inkos/web/js/apps/cmd-exe.js no repositório."),
     });
-
     appload.registerNativeApp("monitor", {
       title: "Monitor de Sistema",
       width: 680,
       height: 500,
       mount: lazyNative("./js/apps/monitor.js", "mountMonitor", "Crie inkos/web/js/apps/monitor.js no repositório."),
     });
-
     appload.registerNativeApp("settings", {
       title: "Configurações & Planos de Fundo",
       width: 740,
       height: 500,
       mount: lazyNative("./js/apps/settings.js", "mountSettings", "Crie inkos/web/js/apps/settings.js no repositório."),
     });
+
+    (async () => {
+      const diag = {
+        isolated: Boolean(window.crossOriginIsolated),
+        wasmLoaded: false,
+        wasiCompiled: false,
+        workerReady: false,
+        lastError: null,
+      };
+      window.inkOS = {
+        diag,
+        vfs,
+        openApp: appload.openApp,
+        closeApp: appload.closeApp,
+      };
+
+      if (!window.crossOriginIsolated) {
+        diag.lastError = "crossOriginIsolated=false";
+        return;
+      }
+
+      let mod = null;
+      try {
+        mod = await import("./pkg/inkos.js");
+        if (typeof mod.default === "function") {
+          await mod.default();
+        }
+        diag.wasmLoaded = true;
+      } catch (e) {
+        diag.lastError = `wasm init: ${e?.message || e}`;
+        console.warn("[InkOS wasm init]", e);
+        return;
+      }
+
+      const initialPages = 256;
+      const maxPages = 16384;
+      let memory = null;
+      try {
+        memory = new WebAssembly.Memory({
+          initial: initialPages,
+          maximum: maxPages,
+          shared: true,
+        });
+        window.inkOS.memory = memory;
+      } catch (e) {
+        diag.lastError = `memory: ${e?.message || e}`;
+        console.warn("[InkOS memory]", e);
+        return;
+      }
+
+      let soc = null;
+      if (typeof mod.InkSoC === "function") {
+        try {
+          soc = new mod.InkSoC(initialPages);
+          soc.bind_shared_memory?.(memory.buffer);
+          window.inkOS.soc = soc;
+        } catch (e) {
+          diag.lastError = `InkSoC ctor: ${e?.message || e}`;
+          console.warn("[InkSoC ctor]", e);
+        }
+      }
+
+      if (soc && typeof soc.emit_wasi_module === "function") {
+        try {
+          const wasiMod = soc.emit_wasi_module();
+          if (wasiMod) {
+            await WebAssembly.compile(wasiMod);
+            diag.wasiCompiled = true;
+          }
+        } catch (e) {
+          diag.lastError = `wasi compile: ${e?.message || e}`;
+          console.warn("[InkSoC wasi compile]", e);
+        }
+      }
+
+      try {
+        const control = new SharedArrayBuffer(4096);
+        const worker = new Worker("./js/swap.worker.js", { type: "module" });
+        worker.postMessage({
+          type: "init",
+          pageSize: 65536,
+          memory,
+          control,
+        });
+        window.inkOS.control = control;
+        window.inkOS.worker = worker;
+        diag.workerReady = true;
+      } catch (e) {
+        diag.lastError = `swap worker: ${e?.message || e}`;
+        console.warn("[InkOS swap worker]", e);
+      }
+    })();
 
     function toggleLauncher(force) {
       const next = typeof force === "boolean" ? force : !launcherWin.hidden;
@@ -282,6 +365,7 @@
     launcherGrid.addEventListener("click", (e) => {
       if (e.target.closest("button")) toggleLauncher(true);
     });
+
     document.querySelector("#top-apps-btn").addEventListener("click", () => toggleLauncher());
     document.querySelector("#launcher-close").addEventListener("click", () => toggleLauncher(true));
 
