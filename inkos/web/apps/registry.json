@@ -1,6 +1,30 @@
 {
-  "apps": [
-    { "id": "pdf", "name": "PDF", "icon": "file-type-pdf", "ui": "ui.js" },
-    { "id": "terminal", "name": "InkShell", "icon": "terminal", "ui": "ui.js" }
-  ]
+ "base": "https://hub.inkdos.workers.dev/",
+ "apps": [
+  { "id": "pdf", "name": "PDF", "href": "inkdos/apps/pdf/index.html?suite=1", "icon": "assets/icones-inkdos/pdf.svg" },
+  { "id": "editar-pdf", "name": "Edit PDF", "href": "apps/editar-pdf/", "icon": "assets/icones-inkdos/editar-pdf.svg" },
+  { "id": "seguranca", "name": "Security", "href": "apps/seguranca/", "icon": "assets/icones-inkdos/seguranca.svg" },
+  { "id": "wordcraft", "name": "Documents · ArtCraft", "href": "apps/wordcraft/", "icon": "assets/icones-inkdos/wordcraft.png" },
+  { "id": "gridcraft", "name": "Spreadsheets · ArtCraft", "href": "apps/gridcraft/", "icon": "assets/icones-inkdos/gridcraft.png" },
+  { "id": "deckcraft", "name": "Presentations · ArtCraft", "href": "apps/deckcraft/", "icon": "assets/icones-inkdos/deckcraft.png" },
+  { "id": "documentos", "name": "Documents · InkDOS", "href": "inkdos/apps/documents/index.html?suite=1", "icon": "assets/icones-inkdos/documents.svg" },
+  { "id": "planilhas", "name": "Spreadsheets · InkDOS", "href": "inkdos/apps/spreadsheets/index.html?suite=1", "icon": "assets/icones-inkdos/spreadsheets.svg" },
+  { "id": "apresentacoes", "name": "Presentations · InkDOS", "href": "inkdos/apps/presentations/index.html?suite=1", "icon": "assets/icones-inkdos/presentations.png" },
+  { "id": "texto", "name": "Plain text", "href": "inkdos/apps/txt/index.html?suite=1", "icon": "assets/icones-inkdos/txt.svg" },
+  { "id": "epub", "name": "EPUB reader", "href": "inkdos/apps/epub/index.html?suite=1", "icon": "assets/icones-inkdos/epub.svg" },
+  { "id": "foto", "name": "Photos", "href": "apps/foto/", "icon": "assets/icones-inkdos/foto.svg" },
+  { "id": "video", "name": "Video", "href": "apps/video/", "icon": "assets/icones-inkdos/video.svg" },
+  { "id": "musica", "name": "Music", "href": "apps/musica/", "icon": "assets/icones-inkdos/musica.svg" },
+  { "id": "gravador", "name": "Recorder", "href": "apps/gravador/", "icon": "assets/icones-inkdos/gravador.svg" },
+  { "id": "webcam", "name": "Webcam", "href": "InkCam/", "icon": "assets/icones-inkdos/webcam.svg" },
+  { "id": "transferir", "name": "Transfer", "href": "apps/transferir/", "icon": "assets/icones-inkdos/transferir.svg" },
+  { "id": "quadro", "name": "Whiteboard", "href": "apps/quadro/", "icon": "assets/icones-inkdos/quadro.svg" },
+  { "id": "codigo", "name": "Code", "href": "apps/codigo/", "icon": "assets/icones-inkdos/codigo.svg", "tab": true },
+  { "id": "terminal", "name": "Linux terminal", "href": "InkShell/", "icon": "assets/icones-inkdos/terminal.svg", "tab": true },
+  { "id": "zip", "name": "Zip", "href": "apps/zip/", "icon": "assets/icones-inkdos/zip.svg" },
+  { "id": "ia", "name": "AI Chat", "href": "InkMind/", "icon": "assets/icones-inkdos/ia.svg", "tab": true },
+  { "id": "wine", "name": "InkSoC", "href": "InkSoC/", "icon": "assets/icones-inkdos/wine.svg", "tab": true },
+  { "id": "jogos", "name": "Games", "href": "InkArcade/", "icon": "assets/icones-inkdos/jogos.svg" },
+  { "id": "wasm", "name": "Wasm Build", "href": "apps/wasm/", "icon": "assets/icones-inkdos/wasm.svg" }
+ ]
 }
