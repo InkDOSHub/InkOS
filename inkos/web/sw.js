@@ -1,4 +1,4 @@
-const VERSION = "inkos-v8";
+const VERSION = "inkos-v9";
 const STATIC = VERSION + "-static";
 const RUNTIME = VERSION + "-rt";
 const ASSETS = [
