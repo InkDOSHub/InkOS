@@ -1,10 +1,17 @@
 {
-  "name": "InkOS",
+  "name": "InkOS — Arch / CachyOS Desktop",
   "short_name": "InkOS",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#1e1e2e",
-  "theme_color": "#1e1e2e",
-  "description": "InkOS web desktop"
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "icons": [
+    {
+      "src": "./usr/share/icons/icons.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
 }
+

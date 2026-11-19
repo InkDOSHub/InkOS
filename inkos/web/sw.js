@@ -1,92 +1,41 @@
-const VERSION = "inkos-v9";
-const STATIC = VERSION + "-static";
-const RUNTIME = VERSION + "-rt";
+const VERSION = "inkos-arch-cachy-v1";
+const CACHE = `inkos-cache-${VERSION}`;
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./theme/catppuccin.css",
-  "./icons.svg",
+  "./_headers",
+  "./usr/share/themes/arch-cachy.css",
+  "./usr/share/icons/icons.svg",
+  "./boot/kernel-bridge.js",
+  "./boot/swap.worker.js",
+  "./sys/wm.js",
+  "./sys/appload.js",
+  "./sys/mobile.js",
+  "./usr/apps/hub-runtime.js",
+  "./usr/bin/settings.js",
   "./pkg/inkos.js",
-  "./pkg/inkos_bg.wasm",
-  "./js/wm.js",
-  "./js/mobile.js",
-  "./js/terminal.js",
-  "./js/apps.js",
-  "./js/bench.js",
-  "./js/session.js",
-  "./js/swap.worker.js",
-  "./js/appload.js",
-  "./js/vfs.js",
-  "./js/apps/finder.js",
-  "./js/apps/browser.js",
-  "./js/apps/shell.js",
-  "./js/apps/cmd-exe.js",
-  "./js/apps/settings.js",
-  "./js/apps/monitor.js",
-  "./apps/registry.json",
+  "./pkg/inkos_bg.wasm"
 ];
-const HEAVY = /\/(pkg|apps)\/.*\.(wasm|js)$/;
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(STATIC).then((c) => Promise.allSettled(ASSETS.map((u) => c.add(u))))
-  );
-  self.skipWaiting();
-});
-
-self.addEventListener("message", (e) => {
-  if (e.data === "SKIP_WAITING") self.skipWaiting();
-});
-
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    (async () => {
-      for (const k of await caches.keys()) {
-        if (!k.startsWith(VERSION)) await caches.delete(k);
-      }
-      await self.clients.claim();
-    })()
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
   );
 });
 
-const put = async (name, req, resp) => {
-  if (resp && resp.ok && resp.type === "basic" && resp.status === 200) {
-    (await caches.open(name)).put(req, resp.clone());
-  }
-  return resp;
-};
-
-self.addEventListener("fetch", (e) => {
-  const req = e.request;
-  const url = new URL(req.url);
-  if (req.method !== "GET" || url.origin !== location.origin) return;
-  if (req.headers.has("range")) return;
-
-  if (req.mode === "navigate") {
-    e.respondWith(
-      fetch(req)
-        .then((r) => put(STATIC, "./index.html", r))
-        .catch(() => caches.match("./index.html"))
-    );
-    return;
-  }
-
-  if (HEAVY.test(url.pathname)) {
-    e.respondWith(
-      caches.match(req).then(
-        (c) => c || fetch(req).then((r) => put(RUNTIME, req, r))
-      )
-    );
-    return;
-  }
-
-  e.respondWith(
-    caches.match(req).then((c) => {
-      const net = fetch(req)
-        .then((r) => put(RUNTIME, req, r))
-        .catch(() => c);
-      return c || net;
-    })
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
 });
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
+  );
+});
+

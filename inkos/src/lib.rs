@@ -90,3 +90,4 @@ impl InkSoC {
         Ok(module.finish())
     }
 }
+

@@ -84,3 +84,4 @@ if [[ -n "$big" ]]; then
 fi
 
 printf 'Built dist/ (%s files)\n' "$(find dist -type f | wc -l | tr -d ' ')"
+
