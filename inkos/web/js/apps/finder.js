@@ -2,7 +2,7 @@
 const svg = (id, size = 16) =>
   `<svg width="${size}" height="${size}" style="flex:0 0 auto;" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
 
-export function mountFinder(root, { vfs, openApp }) {
+export function mountFinder(root, { vfs, openApp, syncTheme }) {
   let cwd = "/Home";
   let selected = null;
 
@@ -43,7 +43,6 @@ export function mountFinder(root, { vfs, openApp }) {
   const listEl = root.querySelector("#f-list");
   const prevEl = root.querySelector("#f-preview");
   const fileInput = root.querySelector("#f-file-input");
-
   const btnOpen = root.querySelector("#f-open");
   const btnSendHub = root.querySelector("#f-send-hub");
   const btnDl = root.querySelector("#f-dl");
@@ -71,6 +70,7 @@ export function mountFinder(root, { vfs, openApp }) {
       card.type = "button";
       const isSel = selected?.path === item.path;
       card.style.cssText = `appearance:none;border:1px solid ${isSel ? "var(--accent)" : "var(--border)"};background:${isSel ? "var(--accent-soft)" : "var(--surface)"};color:var(--text);border-radius:10px;padding:10px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font-size:12px;`;
+
       const iconId =
         item.type === "dir"
           ? "i-folder"
@@ -79,6 +79,7 @@ export function mountFinder(root, { vfs, openApp }) {
           : item.name.toLowerCase().endsWith(".pdf")
           ? "i-pdf"
           : "i-file";
+
       card.innerHTML = `${svg(iconId, 28)}<span style="word-break:break-word;">${item.name}</span><span style="font-size:10px;color:var(--muted);">${item.type === "dir" ? "Pasta" : `${item.size} B`}</span>`;
 
       card.onclick = async () => {
@@ -157,6 +158,21 @@ export function mountFinder(root, { vfs, openApp }) {
       cwd = selected.path;
       selected = null;
       return render();
+    }
+    if (selected.name.toLowerCase().endsWith(".inkos")) {
+      const pass = prompt("Senha da sessão criptografada (.inkos):");
+      if (!pass) return;
+      try {
+        const bytes = await vfs.readBytes(selected.path);
+        const sMod = await import("../session.js");
+        const snap = await sMod.decryptAndRestoreSession(vfs, bytes, pass);
+        syncTheme?.();
+        prevEl.textContent = `Sessão .inkos restaurada (${snap.entries.length} entradas).`;
+        await render();
+      } catch (e) {
+        prevEl.textContent = `Falha ao abrir .inkos: ${e?.message || e}`;
+      }
+      return;
     }
     if (selected.name.toLowerCase().endsWith(".exe")) {
       await openApp("cmdexe", undefined, { exePath: selected.path });
