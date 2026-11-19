@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" data-theme="mocha">
+<html lang="pt-PT" data-theme="mocha">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -48,7 +48,7 @@
     <section class="launcher-overlay" id="launcher-window" hidden aria-label="Applications Launcher">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <strong>Applications — InkDOS Hub &amp; Nativos</strong>
-        <button id="launcher-close" class="win-btn close" type="button" aria-label="Fechar">✕</button>
+        <button id="launcher-close" class="mac-light close" type="button" aria-label="Fechar" style="color:rgba(0,0,0,.72);">×</button>
       </div>
       <input id="launcher-search" class="launcher-search" type="search" placeholder="Type to search apps..." autocomplete="off">
       <div id="app-grid"></div>
@@ -84,7 +84,6 @@
     const svgIcon = (id, size = 20) =>
       `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
 
-    // Relógio, tema, workspaces e teclas: ligados imediatamente sem depender de imports
     const updateClock = () => {
       document.querySelector("#clock").textContent = new Intl.DateTimeFormat(undefined, {
         weekday: "short",
@@ -113,7 +112,6 @@
       });
     });
 
-    // Carrega WM e appload com proteção contra erro
     const [{ WindowManager }, appload] = await Promise.all([
       import("./js/wm.js"),
       import("./js/appload.js"),
@@ -128,6 +126,14 @@
       console.warn("[InkOS] vfs.js ausente ou falhou:", e);
     }
 
+    let settingsMod = null;
+    try {
+      settingsMod = await import("./js/apps/settings.js");
+      settingsMod.applyPrefs();
+    } catch (e) {
+      console.warn("[InkOS] settings.js ausente ou falhou:", e);
+    }
+
     let wm;
     const renderDock = (wins = []) => {
       dockEl.innerHTML = "";
@@ -137,6 +143,8 @@
         { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload.openApp("browser", desktopEl) },
         { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload.openApp("shell", desktopEl) },
         { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload.openApp("cmdexe", desktopEl) },
+        { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload.openApp("monitor", desktopEl) },
+        { id: "settings", label: "Ajustes", iconId: "i-settings", action: () => appload.openApp("settings", desktopEl) },
       ];
 
       for (const p of pinned) {
@@ -157,7 +165,7 @@
         dockEl.append(b);
       }
 
-      const openWins = wins.filter((w) => !/^native-(finder|browser|shell|cmdexe)$/.test(w.id));
+      const openWins = wins.filter((w) => !/^native-(finder|browser|shell|cmdexe|monitor|settings)$/.test(w.id));
       if (openWins.length > 0) {
         const sep = document.createElement("div");
         sep.className = "dock-sep";
@@ -199,11 +207,16 @@
       });
     });
 
-    // Helper que carrega app nativo sob demanda (com fallback informativo se o arquivo ainda não existir)
     const lazyNative = (path, exportName, fallbackMsg) => async (el, ctx) => {
       try {
         const mod = await import(path);
-        return await mod[exportName](el, { ...ctx, vfs });
+        return await mod[exportName](el, {
+          ...ctx,
+          vfs,
+          wm,
+          closeApp: (id) => appload.closeApp(id),
+          syncTheme: appload.syncTheme,
+        });
       } catch (e) {
         el.innerHTML = `<div style="padding:16px;font-size:13px;line-height:1.5;">
           <strong>Módulo pendente:</strong> <code>${path}</code><br>
@@ -240,6 +253,20 @@
       mount: lazyNative("./js/apps/cmd-exe.js", "mountCmdExe", "Crie inkos/web/js/apps/cmd-exe.js no repositório."),
     });
 
+    appload.registerNativeApp("monitor", {
+      title: "Monitor de Sistema",
+      width: 680,
+      height: 500,
+      mount: lazyNative("./js/apps/monitor.js", "mountMonitor", "Crie inkos/web/js/apps/monitor.js no repositório."),
+    });
+
+    appload.registerNativeApp("settings", {
+      title: "Configurações & Planos de Fundo",
+      width: 740,
+      height: 500,
+      mount: lazyNative("./js/apps/settings.js", "mountSettings", "Crie inkos/web/js/apps/settings.js no repositório."),
+    });
+
     function toggleLauncher(force) {
       const next = typeof force === "boolean" ? force : !launcherWin.hidden;
       launcherWin.hidden = next;
@@ -260,7 +287,9 @@
 
     document.querySelector("#theme-toggle").addEventListener("click", () => {
       const cur = document.documentElement.dataset.theme;
-      document.documentElement.dataset.theme = cur === "latte" ? "mocha" : "latte";
+      const next = cur === "latte" ? "mocha" : "latte";
+      document.documentElement.dataset.theme = next;
+      if (settingsMod?.savePrefs) settingsMod.savePrefs({ theme: next });
       appload.syncTheme();
     });
 
