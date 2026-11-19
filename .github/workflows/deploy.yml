@@ -1,96 +1,90 @@
-name: InkOS — Apply Patch ZIP & Build Wasm
-
+name: InkOS — Apply Arch/CachyOS Refactor ZIP & Build
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "*.zip"
-      - "inkos/**"
-      - "scripts/**"
-      - ".github/workflows/deploy.yml"
-  workflow_dispatch:
-    inputs:
-      zip_file:
-        description: "Nome do arquivo .zip na raiz do repositório (opcional)"
-        required: false
-        default: ""
-
+push:
+branches:
+- main
+paths:
+- "*.zip"
+- "inkos/"
+- "scripts/"
+- ".github/workflows/deploy.yml"
+workflow_dispatch:
+inputs:
+zip_file:
+description: "Nome do arquivo .zip na raiz do repositório (opcional)"
+required: false
+default: ""
 permissions:
-  contents: write
-  pages: write
-  id-token: write
-
+contents: write
+pages: write
+id-token: write
 jobs:
-  apply-and-build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Locate and extract patch ZIP (if present)
-        id: unpack
-        run: |
-          set -euo pipefail
-          ZIP_TARGET="${{ github.event.inputs.zip_file }}"
-          if [[ -z "$ZIP_TARGET" ]]; then
-            ZIP_TARGET=$(ls -1t *.zip 2>/dev/null | head -n 1 || true)
-          fi
-
-          if [[ -n "$ZIP_TARGET" && -f "$ZIP_TARGET" ]]; then
-            echo "Applying archive: $ZIP_TARGET"
-            TMP_UNPACK=$(mktemp -d)
-            unzip -q "$ZIP_TARGET" -d "$TMP_UNPACK"
-
-            # Se o zip tiver uma pasta raiz única (ex: InkOS-main/ ou patch/), entra nela
-            SUBDIRS=$(find "$TMP_UNPACK" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
-            ROOTFILES=$(find "$TMP_UNPACK" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')
-            SRC_DIR="$TMP_UNPACK"
-            if [[ "$SUBDIRS" -eq 1 && "$ROOTFILES" -eq 0 ]]; then
-              SRC_DIR=$(find "$TMP_UNPACK" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-            fi
-
-            cp -rf "$SRC_DIR"/. ./
-            rm -rf "$TMP_UNPACK" "$ZIP_TARGET"
-            echo "applied=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No .zip archive found; building current tree."
-            echo "applied=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Verify cross-origin isolation headers & required structure
-        run: |
-          set -euo pipefail
-          test -f inkos/web/index.html
-          test -f inkos/web/icons.svg
-          test -f inkos/web/js/wm.js
-          test -f inkos/web/js/appload.js
-          test -f inkos/web/_headers
-          grep -q "Cross-Origin-Opener-Policy: same-origin" inkos/web/_headers
-          grep -q "Cross-Origin-Embedder-Policy: require-corp" inkos/web/_headers
-
-      - name: Build InkOS Rust/Wasm & Web Bundle
-        run: |
-          chmod +x scripts/build.sh
-          ./scripts/build.sh
-
-      - name: Commit unpacked changes to main (when ZIP was applied)
-        if: steps.unpack.outputs.applied == 'true'
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(inkos): apply Arch/Alpine & Hub window refactor from ZIP"
-            git push origin main
-          fi
-
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: inkos-dist
-          path: dist/
-          retention-days: 7
+apply-and-build:
+runs-on: ubuntu-latest
+steps:
+- name: Checkout repository
+uses: actions/checkout@v4
+with:
+fetch-depth: 0
+- name: Locate and extract patch ZIP (if present)
+id: unpack
+run: |
+set -euo pipefail
+ZIP_TARGET="${{ github.event.inputs.zip_file }}"
+if [[ -z "￼
+￼(ls -1t *.zip 2>/dev/null | head -n 1 || true)
+fi
+if [[ -n "$ZIP_TARGET" && -f "$ZIP_TARGET" ]]; then
+echo "Applying archive: ￼
+￼(mktemp -d)
+unzip -q "$ZIP_TARGET" -d "$TMP_UNPACK"
+SUBDIRS=$(find "￼
+￼(find "$TMP_UNPACK" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')
+SRC_DIR="$TMP_UNPACK"
+if [[ "$SUBDIRS" -eq 1 && "￼
+￼(find "$TMP_UNPACK" -mindepth 1 -maxdepth 1 -type d | head -n 1)
+fi
+# Limpa diretórios antigos reorganizados para evitar arquivos órfãos
+rm -rf inkos/web/theme inkos/web/icons.svg inkos/web/js/apps.js inkos/web/apps/inksoc
+cp -rf "$SRC_DIR"/. ./
+rm -rf "$TMP_UNPACK" "$ZIP_TARGET"
+echo "applied=true" >> "$GITHUB_OUTPUT"
+else
+echo "No .zip archive found; building current tree."
+echo "applied=false" >> "$GITHUB_OUTPUT"
+fi
+- name: Verify Arch/CachyOS layered structure & COOP/COEP headers
+run: |
+set -euo pipefail
+test -f inkos/web/index.html
+test -f inkos/web/boot/kernel-bridge.js
+test -f inkos/web/boot/swap.worker.js
+test -f inkos/web/sys/wm.js
+test -f inkos/web/sys/appload.js
+test -f inkos/web/usr/share/themes/arch-cachy.css
+test -f inkos/web/usr/share/icons/icons.svg
+test -f inkos/web/usr/apps/hub-runtime.js
+test -f inkos/web/_headers
+grep -q "Cross-Origin-Opener-Policy: same-origin" inkos/web/_headers
+grep -q "Cross-Origin-Embedder-Policy: require-corp" inkos/web/_headers
+- name: Build InkOS Rust/Wasm & Web Bundle
+run: |
+chmod +x scripts/build.sh
+./scripts/build.sh
+- name: Commit unpacked changes to main (when ZIP was applied)
+if: steps.unpack.outputs.applied == 'true'
+run: |
+set -euo pipefail
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git add -A
+if ! git diff --cached --quiet; then
+git commit -m "chore(inkos): apply Arch/CachyOS layered architecture & Hub apps"
+git push origin main
+fi
+- name: Upload dist artifact
+uses: actions/upload-artifact@v4
+with:
+name: inkos-dist
+path: dist/
+retention-days: 7
