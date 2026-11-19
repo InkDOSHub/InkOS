@@ -165,8 +165,9 @@
       });
     }).catch(console.error);
 
-    document.querySelector("#theme-toggle").addEventListener("click", () => {
+        document.querySelector("#theme-toggle").addEventListener("click", () => {
       document.documentElement.dataset.theme = document.documentElement.dataset.theme === "mocha" ? "latte" : "mocha";
+      import("./js/appload.js").then((m) => m.syncTheme()).catch(() => {});
     });
     document.querySelector("#open-apps").addEventListener("click", () => {
       const win = document.querySelector("#launcher-window");
