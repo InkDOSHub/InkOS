@@ -1,4 +1,4 @@
-// Ajustes do Sistema + Planos de Fundo do InkOS (persistente)
+// Ajustes do Sistema + Planos de Fundo + Sessão Criptografada do InkOS (persistente)
 const STORAGE_KEY = "inkos-prefs-v1";
 
 export const WALLPAPERS = [
@@ -82,13 +82,20 @@ export function applyPrefs(prefs = loadPrefs()) {
 export async function mountSettings(root, { vfs, syncTheme }) {
   let tab = "wallpaper";
   let prefs = loadPrefs();
+  let sessionMod = null;
+  try {
+    sessionMod = await import("../session.js");
+  } catch (_) {
+    sessionMod = null;
+  }
 
   root.innerHTML = `
     <div style="display:flex;flex:1;min-height:0;height:100%;">
-      <aside style="width:180px;padding:10px;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;gap:4px;font-size:12.5px;">
+      <aside style="width:186px;padding:10px;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;gap:4px;font-size:12.5px;">
         <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:4px 8px;">Ajustes</div>
         <button data-tab="wallpaper" type="button" class="top-pill active" style="justify-content:flex-start;">Planos de Fundo</button>
         <button data-tab="appearance" type="button" class="top-pill" style="justify-content:flex-start;">Aparência e Dock</button>
+        <button data-tab="session" type="button" class="top-pill" style="justify-content:flex-start;">Sessão &amp; Criptografia</button>
         <button data-tab="system" type="button" class="top-pill" style="justify-content:flex-start;">Sistema e Armazenamento</button>
       </aside>
       <div id="set-body" style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px;"></div>
@@ -115,7 +122,6 @@ export async function mountSettings(root, { vfs, syncTheme }) {
           <input id="wp-file" type="file" accept="image/*" hidden>
         </div>
       `;
-
       const grid = body.querySelector("#wp-grid");
       for (const wp of WALLPAPERS) {
         const active = !prefs.customWallpaperUrl && prefs.wallpaperId === wp.id;
@@ -178,7 +184,6 @@ export async function mountSettings(root, { vfs, syncTheme }) {
           <input id="dock-range" type="range" min="0.85" max="1.2" step="0.05" value="${curScale}" style="width:220px;">
         </div>
       `;
-
       body.querySelector("#th-dark").onclick = () => {
         savePrefs({ theme: "mocha" });
         syncTheme?.();
@@ -189,7 +194,6 @@ export async function mountSettings(root, { vfs, syncTheme }) {
         syncTheme?.();
         renderTab();
       };
-
       const accRow = body.querySelector("#acc-row");
       for (const a of ACCENTS) {
         const b = document.createElement("button");
@@ -203,12 +207,89 @@ export async function mountSettings(root, { vfs, syncTheme }) {
         };
         accRow.append(b);
       }
-
       const range = body.querySelector("#dock-range");
       range.oninput = () => {
         body.querySelector("#dock-val").textContent = `${Math.round(Number(range.value) * 100)}%`;
         savePrefs({ dockScale: Number(range.value) });
       };
+    }
+
+    if (tab === "session") {
+      body.innerHTML = `
+        <div>
+          <strong style="font-size:14px;">Sessão &amp; Criptografia (.inkos)</strong>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Derivação de chave com PBKDF2 + AES-GCM 256-bit para congelar, despertar e exportar/importar o VFS.</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          <input id="ses-pass" type="password" placeholder="Senha da sessão (.inkos)" autocomplete="off" style="flex:1;min-width:200px;padding:7px 11px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12.5px;">
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button id="ses-freeze" type="button" class="top-pill active">Congelar no VFS</button>
+          <button id="ses-wake" type="button" class="top-pill">Despertar do VFS</button>
+          <button id="ses-export" type="button" class="top-pill">Exportar .inkos</button>
+          <button id="ses-import-btn" type="button" class="top-pill">Importar .inkos</button>
+          <input id="ses-import-file" type="file" accept=".inkos" hidden>
+        </div>
+        <div id="ses-status" style="font-size:12px;color:var(--muted);padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border);">
+          ${sessionMod ? "Módulo session.js carregado." : "Módulo session.js indisponível."}
+        </div>
+      `;
+
+      const passEl = body.querySelector("#ses-pass");
+      const statusEl = body.querySelector("#ses-status");
+      const impFileEl = body.querySelector("#ses-import-file");
+
+      const setStatus = (txt, isErr = false) => {
+        statusEl.textContent = txt;
+        statusEl.style.color = isErr ? "var(--danger)" : "var(--muted)";
+      };
+
+      body.querySelector("#ses-freeze")?.addEventListener("click", async () => {
+        try {
+          if (!sessionMod || !vfs) throw new Error("Sessão ou VFS indisponível.");
+          const res = await sessionMod.freezeSessionToVfs(vfs, passEl.value);
+          setStatus(`Sessão congelada em ${res.path} (${res.bytes} bytes).`);
+        } catch (e) {
+          setStatus(e?.message || String(e), true);
+        }
+      });
+
+      body.querySelector("#ses-wake")?.addEventListener("click", async () => {
+        try {
+          if (!sessionMod || !vfs) throw new Error("Sessão ou VFS indisponível.");
+          const snap = await sessionMod.wakeSessionFromVfs(vfs, passEl.value);
+          syncTheme?.();
+          setStatus(`Sessão restaurada (${snap.entries.length} entradas de ${snap.createdAt}).`);
+        } catch (e) {
+          setStatus(e?.message || String(e), true);
+        }
+      });
+
+      body.querySelector("#ses-export")?.addEventListener("click", async () => {
+        try {
+          if (!sessionMod || !vfs) throw new Error("Sessão ou VFS indisponível.");
+          const res = await sessionMod.exportSessionFile(vfs, passEl.value);
+          setStatus(`Exportado ${res.fileName} (${res.bytes} bytes).`);
+        } catch (e) {
+          setStatus(e?.message || String(e), true);
+        }
+      });
+
+      body.querySelector("#ses-import-btn")?.addEventListener("click", () => impFileEl.click());
+      impFileEl?.addEventListener("change", async () => {
+        try {
+          const f = impFileEl.files?.[0];
+          if (!f) return;
+          if (!sessionMod || !vfs) throw new Error("Sessão ou VFS indisponível.");
+          const snap = await sessionMod.importSessionFile(vfs, f, passEl.value);
+          syncTheme?.();
+          setStatus(`Importado ${f.name} (${snap.entries.length} entradas).`);
+        } catch (e) {
+          setStatus(e?.message || String(e), true);
+        } finally {
+          impFileEl.value = "";
+        }
+      });
     }
 
     if (tab === "system") {
