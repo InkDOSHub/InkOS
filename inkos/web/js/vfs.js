@@ -1,47 +1,59 @@
-// Sistema de Arquivos Interno do InkOS (OPFS com fallback IndexedDB + Bridge com Hub)
+// Sistema de Arquivos Virtual (VFS) do InkOS: OPFS com fallback para IndexedDB
 const DB_NAME = "inkos-vfs-db";
-const STORE = "files";
-const ch = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("inkos-vfs") : null;
+const DB_VERSION = 1;
+const STORE = "entries";
+const CHANNEL_NAME = "inkos-vfs";
 
-function normPath(p = "/") {
-  const parts = String(p || "/")
-    .replace(/\\/g, "/")
-    .split("/")
-    .filter((x) => x && x !== ".");
+const DEFAULT_DIRS = ["/", "/Home", "/Documents", "/Downloads", "/Programs"];
+
+function normalizePath(p) {
+  if (!p) return "/";
+  let s = String(p).trim().replace(/\\/g, "/");
+  if (!s.startsWith("/")) s = "/" + s;
+  const parts = s.split("/").filter(Boolean);
   const stack = [];
   for (const part of parts) {
     if (part === "..") stack.pop();
-    else stack.push(part);
+    else if (part !== ".") stack.push(part);
   }
   return "/" + stack.join("/");
 }
 
-function guessMime(name = "") {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
-  const map = {
-    txt: "text/plain;charset=utf-8",
-    md: "text/markdown;charset=utf-8",
-    json: "application/json;charset=utf-8",
-    js: "text/javascript;charset=utf-8",
-    html: "text/html;charset=utf-8",
-    css: "text/css;charset=utf-8",
-    pdf: "application/pdf",
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    webp: "image/webp",
-    svg: "image/svg+xml",
-    mp3: "audio/mpeg",
-    mp4: "video/mp4",
-    exe: "application/x-msdownload",
-    zip: "application/zip",
-  };
-  return map[ext] || "application/octet-stream";
+function parentOf(path) {
+  const n = normalizePath(path);
+  if (n === "/") return "/";
+  const idx = n.lastIndexOf("/");
+  return idx <= 0 ? "/" : n.slice(0, idx);
+}
+
+function baseNameOf(path) {
+  const n = normalizePath(path);
+  if (n === "/") return "/";
+  return n.slice(n.lastIndexOf("/") + 1);
+}
+
+function guessMime(name) {
+  const lower = String(name || "").toLowerCase();
+  if (lower.endsWith(".txt") || lower.endsWith(".log") || lower.endsWith(".sh") || lower.endsWith(".bat")) {
+    return "text/plain;charset=utf-8";
+  }
+  if (lower.endsWith(".md")) return "text/markdown;charset=utf-8";
+  if (lower.endsWith(".json")) return "application/json;charset=utf-8";
+  if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html;charset=utf-8";
+  if (lower.endsWith(".css")) return "text/css;charset=utf-8";
+  if (lower.endsWith(".js") || lower.endsWith(".mjs")) return "text/javascript;charset=utf-8";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".exe")) return "application/x-msdownload";
+  return "application/octet-stream";
 }
 
 function openIdb() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
@@ -53,13 +65,14 @@ function openIdb() {
   });
 }
 
-class InkVFS {
+class VirtualFileSystem {
   constructor() {
-    this.opfsRoot = null;
     this.mode = "idb";
+    this.opfsRoot = null;
+    this.bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(CHANNEL_NAME) : null;
     this.listeners = new Set();
-    if (ch) {
-      ch.onmessage = () => this._emit();
+    if (this.bc) {
+      this.bc.onmessage = () => this._emitLocal();
     }
   }
 
@@ -68,41 +81,26 @@ class InkVFS {
     return () => this.listeners.delete(fn);
   }
 
-  _emit() {
+  _emitLocal() {
     for (const fn of this.listeners) {
-      try { fn(); } catch (_) {}
+      try {
+        fn();
+      } catch (_) {}
     }
-    ch?.postMessage({ type: "vfs-changed" });
   }
 
-  async init() {
+  _notifyChange() {
+    this._emitLocal();
     try {
-      if (navigator.storage?.getDirectory) {
-        this.opfsRoot = await navigator.storage.getDirectory();
-        this.mode = "opfs";
-      }
-    } catch (_) {
-      this.mode = "idb";
-    }
-    await this.mkdir("/Home");
-    await this.mkdir("/Documents");
-    await this.mkdir("/Downloads");
-    await this.mkdir("/Programs");
-
-    const welcome = "/Home/bem-vindo.txt";
-    if (!(await this.exists(welcome))) {
-      await this.writeText(
-        welcome,
-        "Bem-vindo ao InkOS!\n\nArquivos salvos aqui ficam na memória interna do navegador (OPFS / IndexedDB)\ne podem ser abertos no Finder, Terminal, CMD/.exe ou enviados aos apps do Hub.\n"
-      );
-    }
+      this.bc?.postMessage({ type: "vfs-change", at: Date.now() });
+    } catch (_) {}
   }
 
-  async _idbPut(entry) {
+  async _idbPut(record) {
     const db = await openIdb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite");
-      tx.objectStore(STORE).put(entry);
+      tx.objectStore(STORE).put(record);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -112,7 +110,7 @@ class InkVFS {
     const db = await openIdb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, "readonly");
-      const req = tx.objectStore(STORE).get(path);
+      const req = tx.objectStore(STORE).get(normalizePath(path));
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
@@ -122,7 +120,7 @@ class InkVFS {
     const db = await openIdb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, "readwrite");
-      tx.objectStore(STORE).delete(path);
+      tx.objectStore(STORE).delete(normalizePath(path));
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -138,194 +136,250 @@ class InkVFS {
     });
   }
 
-  async mkdir(dirPath) {
-    const p = normPath(dirPath);
-    if (p === "/") return;
-    if (this.mode === "opfs" && this.opfsRoot) {
-      const parts = p.split("/").filter(Boolean);
-      let cur = this.opfsRoot;
-      for (const part of parts) {
-        cur = await cur.getDirectoryHandle(part, { create: true });
+  async _syncOpfsFile(path, bytes) {
+    if (!this.opfsRoot) return;
+    try {
+      const parts = normalizePath(path).split("/").filter(Boolean);
+      if (!parts.length) return;
+      let dir = this.opfsRoot;
+      for (let i = 0; i < parts.length - 1; i++) {
+        dir = await dir.getDirectoryHandle(parts[i], { create: true });
+      }
+      const fh = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+      const writable = await fh.createWritable();
+      await writable.write(bytes);
+      await writable.close();
+    } catch (_) {}
+  }
+
+  async _syncOpfsDir(path) {
+    if (!this.opfsRoot) return;
+    try {
+      const parts = normalizePath(path).split("/").filter(Boolean);
+      let dir = this.opfsRoot;
+      for (const p of parts) {
+        dir = await dir.getDirectoryHandle(p, { create: true });
+      }
+    } catch (_) {}
+  }
+
+  async _removeOpfsEntry(path) {
+    if (!this.opfsRoot) return;
+    try {
+      const parts = normalizePath(path).split("/").filter(Boolean);
+      if (!parts.length) return;
+      let dir = this.opfsRoot;
+      for (let i = 0; i < parts.length - 1; i++) {
+        dir = await dir.getDirectoryHandle(parts[i]);
+      }
+      await dir.removeEntry(parts[parts.length - 1], { recursive: true });
+    } catch (_) {}
+  }
+
+  async init() {
+    if (typeof navigator !== "undefined" && navigator.storage?.getDirectory) {
+      try {
+        this.opfsRoot = await navigator.storage.getDirectory();
+        this.mode = "opfs";
+      } catch (_) {
+        this.opfsRoot = null;
+        this.mode = "idb";
       }
     }
-    const existing = await this._idbGet(p);
-    if (!existing) {
-      await this._idbPut({ path: p, name: p.split("/").pop(), type: "dir", updatedAt: Date.now(), size: 0 });
-      this._emit();
+    for (const d of DEFAULT_DIRS) {
+      await this.mkdir(d, { silent: true });
     }
+    const readme = await this._idbGet("/Home/bem-vindo.txt");
+    if (!readme) {
+      await this.writeText(
+        "/Home/bem-vindo.txt",
+        "InkOS VFS pronto.\nUse /Home, /Documents, /Downloads ou /Programs.\n",
+        { silent: true }
+      );
+    }
+    return this.mode;
   }
 
-  async exists(path) {
-    const p = normPath(path);
-    return Boolean(await this._idbGet(p));
-  }
-
-  async writeBytes(path, bytes, mime) {
-    const p = normPath(path);
-    const parent = p.split("/").slice(0, -1).join("/") || "/";
-    if (parent !== "/") await this.mkdir(parent);
-    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-    const name = p.split("/").pop();
-    const typeMime = mime || guessMime(name);
-
-    if (this.mode === "opfs" && this.opfsRoot) {
-      try {
-        const parts = p.split("/").filter(Boolean);
-        let dir = this.opfsRoot;
-        for (const seg of parts.slice(0, -1)) {
-          dir = await dir.getDirectoryHandle(seg, { create: true });
-        }
-        const fh = await dir.getFileHandle(parts[parts.length - 1], { create: true });
-        if (typeof fh.createWritable === "function") {
-          const w = await fh.createWritable();
-          await w.write(u8);
-          await w.close();
-        }
-      } catch (_) {}
+  async mkdir(dirPath, { silent = false } = {}) {
+    const n = normalizePath(dirPath);
+    if (n === "/") {
+      await this._idbPut({
+        path: "/",
+        name: "/",
+        parent: "/",
+        type: "dir",
+        size: 0,
+        mime: "inode/directory",
+        updatedAt: Date.now(),
+      });
+      return;
     }
-
+    const parent = parentOf(n);
+    if (parent !== "/") {
+      await this.mkdir(parent, { silent: true });
+    }
     await this._idbPut({
-      path: p,
-      name,
-      type: "file",
-      mime: typeMime,
-      size: u8.byteLength,
+      path: n,
+      name: baseNameOf(n),
+      parent,
+      type: "dir",
+      size: 0,
+      mime: "inode/directory",
       updatedAt: Date.now(),
-      data: u8,
     });
-    this._emit();
+    await this._syncOpfsDir(n);
+    if (!silent) this._notifyChange();
   }
 
-  async writeText(path, text) {
-    const enc = new TextEncoder();
-    await this.writeBytes(path, enc.encode(String(text)), "text/plain;charset=utf-8");
+  async writeBytes(filePath, bytes, mime, { silent = false } = {}) {
+    const n = normalizePath(filePath);
+    if (n === "/") throw new Error("Caminho inválido para arquivo: /");
+    const u8 = bytes instanceof Uint8Array ? new Uint8Array(bytes) : new Uint8Array(bytes || []);
+    const parent = parentOf(n);
+    await this.mkdir(parent, { silent: true });
+    const resolvedMime = mime || guessMime(baseNameOf(n));
+    await this._idbPut({
+      path: n,
+      name: baseNameOf(n),
+      parent,
+      type: "file",
+      size: u8.byteLength,
+      mime: resolvedMime,
+      data: u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength),
+      updatedAt: Date.now(),
+    });
+    await this._syncOpfsFile(n, u8);
+    if (!silent) this._notifyChange();
   }
 
-  async readBytes(path) {
-    const p = normPath(path);
-    const entry = await this._idbGet(p);
-    if (!entry || entry.type !== "file") return null;
-    if (entry.data instanceof Uint8Array) return entry.data;
-    if (entry.data instanceof ArrayBuffer) return new Uint8Array(entry.data);
-    return new Uint8Array(entry.data || []);
+  async writeText(filePath, text, opts = {}) {
+    const enc = new TextEncoder().encode(String(text ?? ""));
+    const mime = opts.mime || guessMime(baseNameOf(filePath));
+    await this.writeBytes(filePath, enc, mime, opts);
   }
 
-  async readText(path) {
-    const bytes = await this.readBytes(path);
+  async readBytes(filePath) {
+    const rec = await this._idbGet(filePath);
+    if (!rec || rec.type !== "file" || !rec.data) return null;
+    return new Uint8Array(rec.data);
+  }
+
+  async readText(filePath) {
+    const bytes = await this.readBytes(filePath);
     if (!bytes) return null;
-    return new TextDecoder().decode(bytes);
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   }
 
   async list(dirPath = "/") {
-    const dir = normPath(dirPath);
+    const n = normalizePath(dirPath);
     const all = await this._idbAll();
-    const prefix = dir === "/" ? "/" : dir + "/";
-    const items = [];
-
-    for (const item of all) {
-      if (item.path === dir || !item.path.startsWith(prefix)) continue;
-      const rest = item.path.slice(prefix.length);
-      if (!rest.includes("/")) {
-        items.push({
-          path: item.path,
-          name: item.name || rest,
-          type: item.type,
-          size: item.size || 0,
-          mime: item.mime || guessMime(item.name || rest),
-          updatedAt: item.updatedAt || 0,
-        });
-      }
-    }
-
-    return items.sort((a, b) => {
+    const children = all.filter((item) => item.path !== "/" && item.parent === n);
+    children.sort((a, b) => {
       if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
-      return a.name.localeCompare(b.name);
+      return String(a.name).localeCompare(String(b.name));
     });
+    return children.map(({ data, ...meta }) => meta);
   }
 
-  async remove(path) {
-    const p = normPath(path);
+  async remove(targetPath) {
+    const n = normalizePath(targetPath);
+    if (n === "/" || DEFAULT_DIRS.includes(n)) {
+      throw new Error(`Diretório base protegido: ${n}`);
+    }
     const all = await this._idbAll();
-    const targets = all.filter((x) => x.path === p || x.path.startsWith(p + "/"));
-    for (const t of targets) {
-      await this._idbDelete(t.path);
+    const prefix = n + "/";
+    for (const item of all) {
+      if (item.path === n || item.path.startsWith(prefix)) {
+        await this._idbDelete(item.path);
+      }
     }
-    if (this.mode === "opfs" && this.opfsRoot) {
-      try {
-        const parts = p.split("/").filter(Boolean);
-        let dir = this.opfsRoot;
-        for (const seg of parts.slice(0, -1)) {
-          dir = await dir.getDirectoryHandle(seg);
-        }
-        await dir.removeEntry(parts[parts.length - 1], { recursive: true });
-      } catch (_) {}
-    }
-    this._emit();
+    await this._removeOpfsEntry(n);
+    this._notifyChange();
   }
 
   async rename(oldPath, newName) {
-    const src = normPath(oldPath);
-    const parent = src.split("/").slice(0, -1).join("/") || "/";
-    const dst = normPath(`${parent}/${newName}`);
+    const src = normalizePath(oldPath);
+    const cleanName = String(newName || "").trim().replace(/\//g, "");
+    if (!cleanName || src === "/") return;
+    const dst = normalizePath(`${parentOf(src)}/${cleanName}`);
     if (src === dst) return;
-    const entry = await this._idbGet(src);
-    if (!entry) return;
-    await this._idbPut({ ...entry, path: dst, name: newName, updatedAt: Date.now() });
-    await this._idbDelete(src);
-    this._emit();
+
+    const all = await this._idbAll();
+    const prefix = src + "/";
+    const matching = all.filter((item) => item.path === src || item.path.startsWith(prefix));
+
+    for (const item of matching) {
+      const nextPath = item.path === src ? dst : dst + item.path.slice(src.length);
+      const nextParent = parentOf(nextPath);
+      const nextName = baseNameOf(nextPath);
+      await this._idbPut({
+        ...item,
+        path: nextPath,
+        parent: nextParent,
+        name: nextName,
+        updatedAt: Date.now(),
+      });
+      if (item.type === "file" && item.data) {
+        await this._syncOpfsFile(nextPath, new Uint8Array(item.data));
+      } else if (item.type === "dir") {
+        await this._syncOpfsDir(nextPath);
+      }
+      await this._idbDelete(item.path);
+    }
+    await this._removeOpfsEntry(src);
+    this._notifyChange();
   }
 
-  async toBlob(path) {
-    const p = normPath(path);
-    const entry = await this._idbGet(p);
-    if (!entry || entry.type !== "file") return null;
-    const bytes = await this.readBytes(p);
-    return new Blob([bytes], { type: entry.mime || guessMime(entry.name) });
+  async toBlob(filePath) {
+    const rec = await this._idbGet(filePath);
+    if (!rec || rec.type !== "file") return null;
+    const u8 = rec.data ? new Uint8Array(rec.data) : new Uint8Array(0);
+    return new Blob([u8], { type: rec.mime || guessMime(rec.name) });
   }
 
-  async toObjectUrl(path) {
-    const blob = await this.toBlob(path);
+  async toObjectUrl(filePath) {
+    const blob = await this.toBlob(filePath);
     if (!blob) return null;
     return URL.createObjectURL(blob);
   }
 
-  async download(path) {
-    const p = normPath(path);
-    const blob = await this.toBlob(p);
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
+  async download(filePath) {
+    const rec = await this._idbGet(filePath);
+    if (!rec || rec.type !== "file") return;
+    const url = await this.toObjectUrl(filePath);
+    if (!url) return;
     const a = document.createElement("a");
     a.href = url;
-    a.download = p.split("/").pop() || "arquivo";
+    a.download = rec.name || "arquivo";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
 
-  // Serve arquivo da memória interna para um app do Hub e envia via postMessage + Blob URL
-  async serveToHubApp(path, appId, openAppFn) {
-    const p = normPath(path);
-    const blob = await this.toBlob(p);
-    if (!blob) throw new Error("Arquivo não encontrado: " + p);
-    const buf = await blob.arrayBuffer();
-    const url = URL.createObjectURL(blob);
-    const winEl = await openAppFn?.(appId);
-    const iframe = winEl?.querySelector?.("iframe");
+  async serveToHubApp(filePath, appId, openAppFn) {
+    const rec = await this._idbGet(filePath);
+    if (!rec || rec.type !== "file") return;
+    const bytes = rec.data ? new Uint8Array(rec.data) : new Uint8Array(0);
+    const mime = rec.mime || guessMime(rec.name);
+    if (typeof openAppFn === "function") {
+      await openAppFn(appId);
+    }
     const payload = {
       type: "inkos-vfs-file",
-      path: p,
-      name: p.split("/").pop(),
-      mime: blob.type,
-      blobUrl: url,
-      buffer: buf,
+      appId,
+      path: rec.path,
+      name: rec.name,
+      mime,
+      bytes,
     };
-    window.__inkOSLastSharedFile = payload;
-    if (iframe?.contentWindow) {
-      setTimeout(() => {
-        try { iframe.contentWindow.postMessage(payload, "*", [buf]); } catch (_) {}
-      }, 350);
-    }
-    return payload;
+    setTimeout(() => {
+      const frames = document.querySelectorAll("iframe");
+      for (const fr of frames) {
+        try {
+          fr.contentWindow?.postMessage(payload, "*");
+        } catch (_) {}
+      }
+    }, 250);
   }
 }
 
-export const vfs = new InkVFS();
+export const vfs = new VirtualFileSystem();
