@@ -1,16 +1,14 @@
-// Terminal interativo do InkOS conectado ao VFS e aos apps
+// Terminal interativo do InkOS conectado ao VFS, sessão (.inkos) e aos apps
 export function mountShell(root, { vfs, openApp }) {
   let cwd = "/Home";
   const hist = [];
   let hIdx = -1;
 
   root.innerHTML = `
-    <div class="terminal-output" id="sh-out" role="log" aria-live="polite">InkOS Shell v1.0 (VFS + Hub + CMD Bridge)
-Digite 'help' para ver os comandos disponíveis.
-</div>
+    <div class="terminal-output" id="sh-out" role="log" aria-live="polite">Digite 'help' para ver os comandos disponíveis.</div>
     <form id="terminal-form">
       <label for="sh-in" id="sh-prompt">/Home $</label>
-      <input id="sh-in" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Comando do terminal">
+      <input id="sh-in" autocomplete="off" autocapitalize="off" spellcheck="false">
     </form>
   `;
 
@@ -46,9 +44,9 @@ Digite 'help' para ver os comandos disponíveis.
       case "help":
         print(
           [
-            "Comandos: help, clear, pwd, ls [dir], cd <dir>, mkdir <dir>, cat <file>,",
-            "          write <file> <texto>, rm <path>, open <appId|finder|browser|cmdexe>,",
-            "          exe <arquivo.exe>, iso",
+            "Comandos: help, clear, pwd, ls [dir], cd <dir>, mkdir <dir>,",
+            "cat <file>, write <file> <texto>, rm <path>, open <appId>,",
+            "exe [arquivo.exe], iso, diag, freeze <senha>, wake <senha>",
           ].join("\n")
         );
         break;
@@ -62,7 +60,7 @@ Digite 'help' para ver os comandos disponíveis.
         const target = resolvePath(rest[0] || cwd);
         const items = await vfs.list(target);
         if (!items.length) print("(vazio)");
-        else print(items.map((i) => `${i.type === "dir" ? "[DIR]" : "[FILE]"} ${i.name} (${i.size}B)`).join("\n"));
+        else print(items.map((i) => `${i.type === "dir" ? "[DIR]" : "[FILE]"} ${i.name}`).join("\n"));
         break;
       }
       case "cd": {
@@ -113,6 +111,26 @@ Digite 'help' para ver os comandos disponíveis.
       case "iso":
         print(`crossOriginIsolated = ${window.crossOriginIsolated}`);
         break;
+      case "diag": {
+        const d = window.inkOS?.diag;
+        if (!d) return print("Sem diagnóstico InkSoC disponível.");
+        print(JSON.stringify(d, null, 2));
+        break;
+      }
+      case "freeze": {
+        if (!rest[0]) return print("Uso: freeze <senha>");
+        const sMod = await import("../session.js");
+        const res = await sMod.freezeSessionToVfs(vfs, rest.join(" "));
+        print(`Sessão congelada em ${res.path} (${res.bytes} bytes).`);
+        break;
+      }
+      case "wake": {
+        if (!rest[0]) return print("Uso: wake <senha>");
+        const sMod = await import("../session.js");
+        const snap = await sMod.wakeSessionFromVfs(vfs, rest.join(" "));
+        print(`Sessão despertada (${snap.entries.length} entradas).`);
+        break;
+      }
       default:
         print(`Comando desconhecido: ${cmd}. Digite 'help'.`);
     }
