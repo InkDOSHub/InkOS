@@ -1,77 +1,127 @@
-// Browser nativo do InkOS com suporte a URLs externas e arquivos vfs:/
-export function mountBrowser(root, { vfs }) {
-  const history = ["https://hub.inkdos.workers.dev/"];
-  let idx = 0;
+// Navegador integrado ao InkOS com suporte a vfs:// e atalhos rápidos
+const BOOKMARKS_PATH = "/Home/bookmarks.json";
+const SHORTCUTS = [
+  { label: "GitHub", url: "https://github.com" },
+  { label: "Cloudflare Pages", url: "https://dash.cloudflare.com" },
+  { label: "WebAssembly", url: "https://webassembly.org" },
+  { label: "MDN Web Docs", url: "https://developer.mozilla.org" },
+];
+
+export function mountBrowser(root, { vfs }, initialCtx = {}) {
+  const history = [];
+  let histIdx = -1;
+  let activeUrl = initialCtx?.url || "https://webassembly.org";
 
   root.innerHTML = `
     <div style="display:flex;flex-direction:column;flex:1;min-height:0;height:100%;">
-      <div style="display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface);align-items:center;">
-        <button id="b-back" class="win-btn" type="button" title="Voltar">←</button>
-        <button id="b-fwd" class="win-btn" type="button" title="Avançar">→</button>
-        <button id="b-reload" class="win-btn" type="button" title="Recarregar">↻</button>
-        <input id="b-url" type="text" value="${history[0]}" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-solid);color:var(--text);font-size:12.5px;outline:none;">
-        <button id="b-go" class="top-pill active" type="button">Ir</button>
-        <button id="b-save-vfs" class="top-pill" type="button" title="Salvar bookmark/nota no VFS">Salvar VFS</button>
+      <div style="display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--panel-solid);align-items:center;">
+        <button id="br-back" class="win-btn" type="button" title="Voltar">←</button>
+        <button id="br-fwd" class="win-btn" type="button" title="Avançar">→</button>
+        <button id="br-reload" class="win-btn" type="button" title="Recarregar">↻</button>
+        <form id="br-form" style="flex:1;display:flex;gap:6px;">
+          <input id="br-url" type="text" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12.5px;">
+          <button type="submit" class="top-pill active">Ir</button>
+        </form>
+        <button id="br-save-bm" class="top-pill" type="button">Salvar no VFS</button>
       </div>
-      <div style="display:flex;gap:6px;padding:5px 10px;border-bottom:1px solid var(--border);background:var(--panel-solid);font-size:11.5px;overflow-x:auto;">
-        <button class="top-pill" data-q="https://hub.inkdos.workers.dev/" type="button">InkDOS Hub</button>
-        <button class="top-pill" data-q="vfs:/Home/bem-vindo.txt" type="button">vfs://Home/bem-vindo.txt</button>
-      </div>
-      <div id="b-stage" style="flex:1;min-height:0;position:relative;display:flex;"></div>
+      <div id="br-shortcuts" style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--surface);font-size:11.5px;"></div>
+      <div id="br-stage" style="flex:1;position:relative;min-height:0;background:var(--panel-solid);"></div>
     </div>
   `;
 
-  const input = root.querySelector("#b-url");
-  const stage = root.querySelector("#b-stage");
+  const urlInput = root.querySelector("#br-url");
+  const stage = root.querySelector("#br-stage");
+  const shortcutsEl = root.querySelector("#br-shortcuts");
+  const btnBack = root.querySelector("#br-back");
+  const btnFwd = root.querySelector("#br-fwd");
 
-  const navigate = async (rawUrl, push = true) => {
-    const target = (rawUrl || "").trim();
-    if (!target) return;
-    if (push && history[idx] !== target) {
-      history.splice(idx + 1);
-      history.push(target);
-      idx = history.length - 1;
-    }
-    input.value = target;
-    stage.innerHTML = "";
+  const syncNavButtons = () => {
+    btnBack.disabled = histIdx <= 0;
+    btnFwd.disabled = histIdx >= history.length - 1;
+  };
 
-    if (target.startsWith("vfs://") || target.startsWith("vfs:")) {
-      const vfsPath = "/" + target.replace(/^vfs:\/*/i, "");
-      const blob = await vfs.toBlob(vfsPath);
-      if (!blob) {
-        stage.innerHTML = `<div style="padding:16px;color:var(--danger);">Arquivo não encontrado no VFS: ${vfsPath}</div>`;
-        return;
-      }
-      const objUrl = URL.createObjectURL(blob);
-      const iframe = document.createElement("iframe");
-      iframe.src = objUrl;
-      iframe.style.cssText = "flex:1;width:100%;height:100%;border:0;background:var(--bg);";
-      stage.append(iframe);
+  const renderTarget = async (rawUrl) => {
+    const trimmed = (rawUrl || "").trim();
+    if (!trimmed) return;
+
+    if (trimmed.startsWith("vfs://")) {
+      const cleanPath = "/" + trimmed.replace(/^vfs:\/+/, "");
+      const txt = await vfs?.readText?.(cleanPath);
+      const safe = (txt ?? `Arquivo não encontrado no VFS: ${cleanPath}`)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;");
+      stage.innerHTML = `<pre style="margin:0;padding:16px;height:100%;overflow:auto;font-size:12.5px;white-space:pre-wrap;color:var(--text);background:var(--panel-solid);">${safe}</pre>`;
       return;
     }
 
-    const normalized = /^https?:\/\//i.test(target) ? target : `https://${target}`;
-    input.value = normalized;
-    const iframe = document.createElement("iframe");
-    iframe.src = normalized;
-    iframe.style.cssText = "flex:1;width:100%;height:100%;border:0;background:var(--bg);";
-    iframe.allow = "fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write";
-    stage.append(iframe);
+    const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    stage.innerHTML = `
+      <div style="display:flex;flex-direction:column;height:100%;">
+        <div style="padding:6px 12px;font-size:11.5px;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:8px;">
+          <span>Nota: alguns sites bloqueiam exibição em iframe (X-Frame-Options / CSP).</span>
+          <a href="${normalized}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);">Abrir fora do iframe</a>
+        </div>
+        <iframe src="${normalized}" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" style="flex:1;width:100%;height:100%;border:0;background:#fff;"></iframe>
+      </div>
+    `;
   };
 
-  root.querySelector("#b-go").onclick = () => navigate(input.value);
-  input.onkeydown = (e) => { if (e.key === "Enter") navigate(input.value); };
-  root.querySelector("#b-back").onclick = () => { if (idx > 0) navigate(history[--idx], false); };
-  root.querySelector("#b-fwd").onclick = () => { if (idx < history.length - 1) navigate(history[++idx], false); };
-  root.querySelector("#b-reload").onclick = () => navigate(input.value, false);
-  root.querySelector("#b-save-vfs").onclick = async () => {
-    const stamp = Date.now();
-    await vfs.writeText(`/Downloads/bookmark-${stamp}.txt`, `URL: ${input.value}\nSalvo em: ${new Date().toISOString()}\n`);
-    alert(`Salvo em /Downloads/bookmark-${stamp}.txt`);
+  const navigate = async (rawUrl, push = true) => {
+    const trimmed = (rawUrl || "").trim();
+    if (!trimmed) return;
+    activeUrl = trimmed.startsWith("vfs://")
+      ? trimmed
+      : /^https?:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    urlInput.value = activeUrl;
+    if (push) {
+      history.splice(histIdx + 1);
+      history.push(activeUrl);
+      histIdx = history.length - 1;
+    }
+    syncNavButtons();
+    await renderTarget(activeUrl);
   };
-  root.querySelectorAll("[data-q]").forEach((btn) => {
-    btn.onclick = () => navigate(btn.dataset.q);
-  });
 
-  navigate(history[0], false);
+  for (const sc of SHORTCUTS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "top-pill";
+    b.textContent = sc.label;
+    b.onclick = () => navigate(sc.url);
+    shortcutsEl.append(b);
+  }
+
+  root.querySelector("#br-form").onsubmit = (e) => {
+    e.preventDefault();
+    navigate(urlInput.value);
+  };
+  btnBack.onclick = () => {
+    if (histIdx > 0) {
+      histIdx--;
+      navigate(history[histIdx], false);
+    }
+  };
+  btnFwd.onclick = () => {
+    if (histIdx < history.length - 1) {
+      histIdx++;
+      navigate(history[histIdx], false);
+    }
+  };
+  root.querySelector("#br-reload").onclick = () => navigate(activeUrl, false);
+
+  root.querySelector("#br-save-bm").onclick = async () => {
+    if (!vfs) return;
+    let list = [];
+    try {
+      const existing = await vfs.readText(BOOKMARKS_PATH);
+      if (existing) list = JSON.parse(existing);
+    } catch (_) {}
+    list.push({ title: activeUrl, url: activeUrl, savedAt: new Date().toISOString() });
+    await vfs.writeText(BOOKMARKS_PATH, JSON.stringify(list, null, 2));
+    alert(`Marcador salvo em ${BOOKMARKS_PATH}`);
+  };
+
+  navigate(activeUrl);
 }
