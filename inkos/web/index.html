@@ -9,6 +9,235 @@
   <title>InkOS — Arch / CachyOS Desktop</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./usr/share/themes/arch-cachy.css">
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --panel: rgba(20, 25, 35, 0.88);
+      --panel-solid: #141923;
+      --surface: #1b2230;
+      --text: #e6edf7;
+      --muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.12);
+      --accent: #7aa2f7;
+    }
+    html[data-theme="cachy-light"] {
+      --bg: #eef2f7;
+      --panel: rgba(255, 255, 255, 0.9);
+      --panel-solid: #ffffff;
+      --surface: #e2e8f0;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: rgba(15, 23, 42, 0.14);
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .topbar {
+      height: 40px;
+      min-height: 40px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      z-index: 30;
+    }
+    .topbar-left, .topbar-right, .topbar-center {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .top-pill, .mac-light {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .badge-iso {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(122, 162, 247, 0.16);
+      color: var(--accent);
+      border: 1px solid rgba(122, 162, 247, 0.3);
+      white-space: nowrap;
+    }
+    .desktop {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(122, 162, 247, 0.14), transparent 45%),
+        radial-gradient(circle at 80% 75%, rgba(187, 154, 247, 0.12), transparent 45%),
+        var(--bg);
+      overflow: hidden;
+    }
+    #framebuffer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+    }
+    .launcher-overlay {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(680px, calc(100% - 24px));
+      max-height: calc(100% - 32px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 14px;
+      background: var(--panel-solid);
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      z-index: 40;
+    }
+    .launcher-overlay[hidden] { display: none; }
+    .launcher-search {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+    }
+    #app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 8px;
+      overflow: auto;
+    }
+    .modifier-bar {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--panel-solid);
+      border-top: 1px solid var(--border);
+      z-index: 25;
+    }
+    .modifier-bar.open { display: flex; }
+    .modifier-bar button {
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+    }
+    .dock-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 6px 10px 10px;
+      background: transparent;
+      z-index: 30;
+    }
+    .dock {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    .dock-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 10px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text);
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .dock-item.focused, .dock-item:hover {
+      background: var(--surface);
+      border-color: var(--border);
+    }
+    .dock-sep {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      margin: 0 2px;
+    }
+    .win {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel-solid);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+    }
+    .win-titlebar {
+      height: 36px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      cursor: grab;
+      user-select: none;
+    }
+    .win-body {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+    #inkos-toast {
+      position: fixed;
+      right: 12px;
+      bottom: 72px;
+      max-width: 340px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: rgba(243, 139, 168, 0.16);
+      border: 1px solid rgba(243, 139, 168, 0.45);
+      color: var(--text);
+      font-size: 11.5px;
+      z-index: 60;
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <header class="topbar" role="banner">
@@ -31,7 +260,7 @@
     <section class="launcher-overlay" id="launcher-window" hidden aria-label="Applications Launcher">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <strong>Applications — InkDOS Hub &amp; Nativos</strong>
-        <button id="launcher-close" class="mac-light close" type="button" aria-label="Fechar" style="color:rgba(0,0,0,.72);">×</button>
+        <button id="launcher-close" class="mac-light close" type="button" aria-label="Fechar" style="color:var(--text);">×</button>
       </div>
       <input id="launcher-search" class="launcher-search" type="search" placeholder="Type to search apps..." autocomplete="off">
       <div id="app-grid"></div>
@@ -54,6 +283,8 @@
     <nav id="dock" class="dock" aria-label="Dock de aplicativos"></nav>
   </div>
 
+  <div id="inkos-toast" role="status" aria-live="polite"></div>
+
   <script type="module">
     const desktopEl = document.querySelector("#desktop");
     const dockEl = document.querySelector("#dock");
@@ -61,7 +292,25 @@
     const launcherGrid = document.querySelector("#app-grid");
     const launcherSearch = document.querySelector("#launcher-search");
     const badge = document.querySelector("#isolation-badge");
+    const toastEl = document.querySelector("#inkos-toast");
     badge.textContent = window.crossOriginIsolated ? "SAB • JIT Ativo" : "Modo Compatibilidade";
+
+    const showToast = (msg) => {
+      if (!toastEl || !msg) return;
+      toastEl.textContent = String(msg);
+      toastEl.style.display = "block";
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => {
+        toastEl.style.display = "none";
+      }, 6000);
+    };
+
+    window.addEventListener("error", (ev) => {
+      showToast(ev.message || "Erro no script");
+    });
+    window.addEventListener("unhandledrejection", (ev) => {
+      showToast(ev.reason?.message || String(ev.reason || "Promessa rejeitada"));
+    });
 
     const svgIcon = (id, size = 20) =>
       `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./usr/share/icons/icons.svg#${id}"></use></svg>`;
@@ -100,9 +349,7 @@
       const vfsMod = await import("./sys/vfs.js");
       vfs = vfsMod.vfs;
       await vfs.init?.();
-    } catch (_) {
-      // Opcional até a criação de ./sys/vfs.js
-    }
+    } catch (_) {}
 
     let settingsMod = null;
     try {
@@ -190,37 +437,37 @@
       title: "Finder — Memória Interna InkOS",
       width: 820,
       height: 520,
-      mount: lazyBin("./usr/bin/finder.js", "mountFinder", "Adicione inkos/web/usr/bin/finder.js ao repositório."),
+      mount: lazyBin("./usr/bin/finder.js", "mountFinder", "Adicione o ficheiro de finder ao repositório."),
     });
     appload.registerSystemBin("browser", {
       title: "InkBrowser",
       width: 900,
       height: 600,
-      mount: lazyBin("./usr/bin/browser.js", "mountBrowser", "Adicione inkos/web/usr/bin/browser.js ao repositório."),
+      mount: lazyBin("./usr/bin/browser.js", "mountBrowser", "Adicione o ficheiro de browser ao repositório."),
     });
     appload.registerSystemBin("shell", {
       title: "Alpine Linux — InkShell",
       width: 780,
       height: 480,
-      mount: lazyBin("./usr/bin/terminal.js", "mountTerminal", "Adicione inkos/web/usr/bin/terminal.js ao repositório."),
+      mount: lazyBin("./usr/bin/terminal.js", "mountTerminal", "Adicione o ficheiro de terminal ao repositório."),
     });
     appload.registerSystemBin("cmdexe", {
       title: "CMD & Instalador .EXE",
       width: 800,
       height: 520,
-      mount: lazyBin("./usr/bin/cmd-exe.js", "mountCmdExe", "Adicione inkos/web/usr/bin/cmd-exe.js ao repositório."),
+      mount: lazyBin("./usr/bin/cmd-exe.js", "mountCmdExe", "Adicione o ficheiro de cmd-exe ao repositório."),
     });
     appload.registerSystemBin("monitor", {
       title: "Monitor de Sistema",
       width: 680,
       height: 500,
-      mount: lazyBin("./usr/bin/monitor.js", "mountMonitor", "Adicione inkos/web/usr/bin/monitor.js ao repositório."),
+      mount: lazyBin("./usr/bin/monitor.js", "mountMonitor", "Adicione o ficheiro de monitor ao repositório."),
     });
     appload.registerSystemBin("settings", {
       title: "Configurações & Planos de Fundo",
       width: 740,
       height: 500,
-      mount: lazyBin("./usr/bin/settings.js", "mountSettings", "Adicione inkos/web/usr/bin/settings.js ao repositório."),
+      mount: lazyBin("./usr/bin/settings.js", "mountSettings", "Adicione o ficheiro de settings ao repositório."),
     });
 
     (async () => {
@@ -240,6 +487,7 @@
 
       if (!window.crossOriginIsolated) {
         diag.lastError = "crossOriginIsolated=false";
+        showToast("crossOriginIsolated desativado");
         return;
       }
 
@@ -252,14 +500,14 @@
           Object.assign(window.inkOS, booted);
           return;
         }
-        mod = await import("../pkg/inkos.js");
+        mod = await import("./pkg/inkos.js");
         if (typeof mod.default === "function") {
           await mod.default();
         }
         diag.wasmLoaded = true;
       } catch (e) {
         diag.lastError = `wasm init: ${e?.message || e}`;
-        console.warn("[InkOS wasm init]", e);
+        showToast(diag.lastError);
         return;
       }
 
@@ -275,7 +523,7 @@
         window.inkOS.memory = memory;
       } catch (e) {
         diag.lastError = `memory: ${e?.message || e}`;
-        console.warn("[InkOS memory]", e);
+        showToast(diag.lastError);
         return;
       }
 
@@ -287,7 +535,7 @@
           window.inkOS.soc = soc;
         } catch (e) {
           diag.lastError = `InkSoC ctor: ${e?.message || e}`;
-          console.warn("[InkSoC ctor]", e);
+          showToast(diag.lastError);
         }
       }
 
@@ -300,7 +548,7 @@
           }
         } catch (e) {
           diag.lastError = `wasi compile: ${e?.message || e}`;
-          console.warn("[InkSoC wasi compile]", e);
+          showToast(diag.lastError);
         }
       }
 
@@ -318,7 +566,7 @@
         diag.workerReady = true;
       } catch (e) {
         diag.lastError = `swap worker: ${e?.message || e}`;
-        console.warn("[InkOS swap worker]", e);
+        showToast(diag.lastError);
       }
     })();
 
@@ -355,4 +603,3 @@
   </script>
 </body>
 </html>
-
