@@ -18,7 +18,7 @@ Receivers drop anything that is not an object, has `v !== 1`, has an unknown
   origin of the configured registry URL.
 - Apps should accept InkOS messages only from InkOS origins:
   `https://inkos-5k7.pages.dev`, its `*.inkos-5k7.pages.dev` previews, and the
-  Hub's own origin (the `/InkOS/` prototype). Apps must also check
+  Hub's own origin (pages that open each other there). Apps must also check
   `event.source === window.parent`.
 
 ## Messages
@@ -39,15 +39,17 @@ change. Cosmetic only: apps must not persist it.
 ### `inkos-vfs-file` (InkOS → app)
 
 ```js
-{ v: 1, type: "inkos-vfs-file", name: "notes.txt", mime: "text/plain", data: ArrayBuffer }
+{ v: 1, type: "inkos-vfs-file", name: "notes.txt", mime: "text/plain", data: Blob }
 ```
 
 - `name`: base name, 1–255 characters, no `/` or `\`.
 - `mime`: string, up to 255 characters.
-- `data`: an `ArrayBuffer`, sent as a transferable (zero copy).
+- `data`: a `Blob` (files the Finder imported: sent by reference, so an installer of
+  hundreds of MB is never copied into memory) or an `ArrayBuffer` (older files, sent as a
+  transferable). The Hub bridge (`assets/inkos-bridge.js?v=2`) accepts both.
 
 Sent after the app frame loads, when the user opens a VFS file "in the Hub".
-Hub pages that include `assets/tema.js` re-dispatch it as a DOM event:
+Hub pages that include `assets/inkos-bridge.js` re-dispatch it as a DOM event:
 `window.addEventListener("inkos:file", (e) => e.detail /* File */)`.
 
 ### `inkos-ready` (app → InkOS)
@@ -90,7 +92,11 @@ app (path relative to the Hub base, the registry's host):
 | `cmdexe` (CMD/EXE) | `InkSoC/?inkos=1` | Command Prompt (cmd.exe); with a file, `&file=1` and a window per program |
 
 A file for these apps is sent with `inkos-vfs-file` after the page says `inkos-ready`.
-`?open=<app id>` on the InkOS address opens that app on start (the Hub's InkSoC link uses `?open=cmdexe`).
+`?open=<app id>` on the InkOS address opens that app on start (for example `?open=cmdexe`).
+
+The engine page also sends `inkos-title` (the program in front), `inkos-size` (the box around
+its windows) and `inksoc-programs` (the `.exe` files installed on drive C:, for Apps →
+Programas Windows; InkOS asks with a hidden `InkSoC/?list=1` frame).
 
 ## Versioning
 
