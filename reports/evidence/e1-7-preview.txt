@@ -1,0 +1,32 @@
+# E1.7 preview 2026-11-20T08:16:38Z commit fc70563
+> /
+HTTP/2 200 
+content-type: text/html; charset=utf-8
+cross-origin-embedder-policy: require-corp
+cross-origin-opener-policy: same-origin
+> /pkg/inkos_bg.wasm
+HTTP/2 200 
+content-type: application/wasm
+cross-origin-embedder-policy: require-corp
+cross-origin-opener-policy: same-origin
+> /sw.js
+HTTP/2 200 
+content-type: application/javascript
+cross-origin-embedder-policy: require-corp
+cross-origin-opener-policy: same-origin
+verify-wasm: ok (74039 bytes, 7 imports [function])
+verify-wasm: wasm-tools validate (conservative features) ok
+✔ chromium: boot without errors, isolated, wasm loaded (775.51959ms)
+✔ chromium: icons, dock, native apps mount (3128.136337ms)
+✔ chromium: window drag, 8-way resize, minimize, maximize, close (1827.670969ms)
+✔ chromium: workspaces isolate windows (918.654218ms)
+✔ chromium: shell, cmd, finder, browser vfs:// (3878.871165ms)
+✖ chromium: .inkos freeze / wake through Shell (6275.508192ms)
+✔ chromium: themes Latte/Mocha + screenshots (2421.181044ms)
+✔ chromium: offline reload keeps isolation (service worker) (2274.781558ms)
+✔ chromium: mobile emulation (iPhone / iPad) layout (1773.370423ms)
+ℹ pass 8
+ℹ fail 1
+✖ failing tests:
+✖ chromium: .inkos freeze / wake through Shell (6275.508192ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /senha incorreta ou arquivo corrompido/. Input:

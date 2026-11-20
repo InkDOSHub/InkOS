@@ -200,6 +200,30 @@ for (const name of wanted) {
     await ctx.close();
   });
 
+  test(`${name}: .inkos freeze / wake through Shell`, async (t) => {
+    const b = browsers[name];
+    if (!b) return t.skip();
+    const { ctx, page, errors } = await bootPage(b);
+    await dockClick(page, "Terminal");
+    const sh = page.locator("#sh-in");
+    await sh.waitFor();
+    const run = async (cmd, wait = 200) => { await sh.fill(cmd); await sh.press("Enter"); await page.waitForTimeout(wait); };
+    await run("write /Home/keep.txt segredo-123");
+    await run("freeze pw-e2e-correta", 2500);
+    await run("rm /Home/keep.txt");
+    await run("wake senha-errada", 2500);
+    let out = await page.locator("#sh-out").innerText();
+    assert.match(out, /senha incorreta ou arquivo corrompido/);
+    await page.waitForTimeout(1200); // UX backoff after a failure
+    await run("wake pw-e2e-correta", 3000);
+    await run("cat /Home/keep.txt");
+    out = await page.locator("#sh-out").innerText();
+    assert.match(out, /Sessão despertada/);
+    assert.ok(out.trim().endsWith("segredo-123"), out.slice(-200));
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
   test(`${name}: themes Latte/Mocha + screenshots`, async (t) => {
     const b = browsers[name];
     if (!b) return t.skip();
