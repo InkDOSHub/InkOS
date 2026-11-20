@@ -19,7 +19,7 @@ branch: autopilot/2026-11-20. base 842113e (main). tag local `pre-autopilot-2026
 | E1.7 deploy | PARCIAL: preview verde 12/12; prod = merge PR (D2) | 4b8244a | evidence/e1-7-preview.txt |
 | E2.1 swap OPFS | FEITO (Chromium); dispositivo PENDENTE-DISPOSITIVO | c203551 | evidence/e2-1-rust.txt, e5-5-e2e.txt |
 | E2.2 .inkos v1 | FEITO | a8dc1e5 | evidence/e2-2.txt, unit.txt |
-| E2.3 UX mobile | PENDENTE-DISPOSITIVO (emulação ok) | b581a02 | evidence/e2-3.txt |
+| E2.3 UX mobile | PARCIAL: iPhone Safari confirmado (toque, janelas, menu); falta teclado físico e Ctrl | a16a7cc | evidence/e2-3.txt |
 | E3.1 tag+graph satélites | PARCIAL: graph+PR ok; tags só locais (B1) | - | PRs InkSoC#17 InkShell#1 InkBench#1 InkMind#1 InkArcade#1 InkCam#1 wasm-build#1 Hub#78 |
 | E3.2 escopo mínimo satélites | FEITO (via PR) | - | idem |
 | E3.3 InkShell rootfs plan | FEITO (via PR) | - | InkShell#1 docs/ROOTFS-PLAN.md |
