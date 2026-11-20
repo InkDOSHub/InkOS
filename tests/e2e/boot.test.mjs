@@ -87,8 +87,17 @@ for (const name of wanted) {
     for (const id of ["i-apps", "i-finder", "i-browser", "i-terminal", "i-cmd", "i-monitor", "i-settings", "i-window"]) {
       assert.ok(svg.includes(`id="${id}"`), `icon ${id} missing`);
     }
-    assert.equal(await page.locator("#dock .dock-item").count(), 8);
-    for (const [label, id] of [["Finder", "finder"], ["Browser", "browser"], ["Terminal", "shell"], ["CMD/EXE", "cmdexe"], ["Monitor", "monitor"], ["Ajustes", "settings"]]) {
+    assert.equal(await page.locator("#dock .dock-item").count(), 7);
+    // Terminal and CMD/EXE are InkOS windows around the Hub engines (InkShell, InkSoC).
+    for (const [label, path] of [["Terminal", "InkShell/?inkos=1"], ["CMD/EXE", "InkSoC/?inkos=1"]]) {
+      await dockClick(page, label);
+      const id = label === "Terminal" ? "shell" : "cmdexe";
+      const fr = page.locator(`.window[data-win-id="frame-${id}"] iframe`);
+      await fr.waitFor({ state: "attached" });
+      assert.ok((await fr.getAttribute("src")).endsWith(path), `${label}: ${await fr.getAttribute("src")}`);
+      await page.evaluate((w) => window.inkOS.closeApp(w), id);
+    }
+    for (const [label, id] of [["Finder", "finder"], ["Browser", "browser"], ["Monitor", "monitor"], ["Ajustes", "settings"]]) {
       await dockClick(page, label);
       const win = page.locator(`.window[data-win-id="native-${id}"]`);
       await win.waitFor();
@@ -163,7 +172,7 @@ for (const name of wanted) {
     const b = browsers[name];
     if (!b) return t.skip();
     const { ctx, page, errors } = await bootPage(b);
-    await dockClick(page, "Terminal");
+    await page.evaluate(() => window.inkOS.openApp("vfs-shell"));
     const sh = page.locator("#sh-in");
     await sh.waitFor();
     for (const cmd of ["mkdir /Home/e2e", "write /Home/e2e/a.txt ola-inkos", "cat /Home/e2e/a.txt", "ls /Home/e2e", "pwd", "diag"]) {
@@ -175,18 +184,16 @@ for (const name of wanted) {
     assert.ok(out.includes("ola-inkos"), "cat did not print file content");
     assert.ok(out.includes("a.txt"), "ls did not list file");
 
+    // CMD/EXE: Command Prompt in its window; each .exe from the VFS gets a window of its own (file=1).
     await dockClick(page, "CMD/EXE");
-    const cmdIn = page.locator("#cmd-in");
-    await cmdIn.waitFor();
-    await cmdIn.fill("help");
-    await cmdIn.press("Enter");
-    await page.waitForTimeout(150);
-    assert.ok((await page.locator("#cmd-out").innerText()).length > 40);
-
-    // .EXE installer: MZ signature detection
-    await page.setInputFiles("#exe-file", { name: "hello.exe", mimeType: "application/octet-stream", buffer: Buffer.from([0x4d, 0x5a, 0x90, 0, 3, 0, 0, 0]) });
-    await page.waitForTimeout(500);
-    assert.match(await page.locator("#cmd-out").innerText(), /MZ: SIM/);
+    await page.locator('.window[data-win-id="frame-cmdexe"] iframe').waitFor({ state: "attached" });
+    await page.evaluate(async () => {
+      await window.inkOS.vfs.writeBytes("/Home/e2e/hello.exe", new Uint8Array([0x4d, 0x5a, 0x90, 0]), "application/x-msdownload");
+      await window.inkOS.vfs.serveToHubApp("/Home/e2e/hello.exe", "cmdexe", (id, file) => window.inkOS.openApp(id, undefined, { file }));
+    });
+    const exeFrame = page.locator('.window[data-win-id="frame-cmdexe-1"] iframe');
+    await exeFrame.waitFor({ state: "attached" });
+    assert.match(await exeFrame.getAttribute("src"), /InkSoC\/\?inkos=1&file=1$/);
 
     await dockClick(page, "Browser");
     const url = page.locator("#br-url");
@@ -212,7 +219,7 @@ for (const name of wanted) {
     const b = browsers[name];
     if (!b) return t.skip();
     const { ctx, page, errors } = await bootPage(b);
-    await dockClick(page, "Terminal");
+    await page.evaluate(() => window.inkOS.openApp("vfs-shell"));
     const sh = page.locator("#sh-in");
     await sh.waitFor();
     const run = async (cmd, wait = 200) => { await sh.fill(cmd); await sh.press("Enter"); await page.waitForTimeout(wait); };
@@ -293,7 +300,8 @@ for (const name of wanted) {
     await page.waitForSelector("#app-grid .app-tile[data-app-id='foto']", { timeout: 20000 });
     const kinds = await page.$$eval("#app-grid .app-tile small", (els) => els.map((e) => e.textContent));
     const hub = kinds.filter((k) => k.startsWith("Hub")).length;
-    assert.ok(hub >= 25, `hub apps in launcher: ${hub}`);
+    // 25 in the registry; terminal and wine are InkOS apps of their own (Terminal, CMD/EXE)
+    assert.ok(hub >= 23, `hub apps in launcher: ${hub}`);
     if (!kinds.includes("Hub")) return t.skip("Hub offline: snapshot used");
     assert.equal(await page.locator(".window iframe").count(), 0, "no iframe before opening (lazy)");
     await page.click("#app-grid .app-tile[data-app-id='foto']");
@@ -363,7 +371,7 @@ for (const name of wanted) {
       const topOverflow = await page.$eval(".topbar", (el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1);
       assert.equal(topOverflow, false, `${dev}: topbar overflows`);
       // modifier bar: arrow key reaches the focused shell input; Ctrl sticky / lock
-      await page.tap("#dock .dock-item >> nth=3");
+      await page.evaluate(() => window.inkOS.openApp("vfs-shell"));
       const sh = page.locator("#sh-in");
       await sh.waitFor();
       await sh.fill("pwd");
@@ -417,7 +425,7 @@ for (const name of wanted) {
       await page.waitForFunction(() => document.querySelector('.window[data-win-id="native-finder"]').style.display === "none");
       // The next normal click still works (nothing swallowed).
       await dockClick(page, "Terminal");
-      await page.locator("#sh-in").waitFor();
+      await page.locator('.window[data-win-id="frame-shell"]').waitFor();
       assert.deepEqual(errors, []);
       await ctx.close();
     }

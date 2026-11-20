@@ -6,10 +6,16 @@ import { themeMessage, fileMessage, send, listen, DEFAULT_HUB_ORIGINS } from "./
 
 export const DEFAULT_REGISTRY_URL = "https://hub.inkdos.workers.dev/InkOS/apps/registry.json";
 export const MAX_HUB_INSTANCES = 4;
+// Hub entries InkOS already has as its own apps (Terminal, CMD/EXE) or that are InkOS itself.
+const HIDDEN_HUB_APPS = new Set(["inkos", "wine", "inksoc", "terminal", "alpine"]);
 
 let wmInstance = null;
 let defaultDesktop = null;
 const nativeApps = new Map();
+// InkOS apps whose engine is a Hub page: the window is InkOS's, the page inside has no
+// chrome of its own (InkSoC: Windows programs; InkShell: Alpine Linux).
+const frameApps = new Map();
+let frameSeq = 0;
 let registryPromise = null;
 const hubOpenOrder = []; // window ids, oldest first
 
@@ -35,6 +41,19 @@ export function bindWindowManager(wm) {
 
 export function registerNativeApp(id, config) {
   nativeApps.set(id, { id, ...config });
+}
+
+// path: relative to the Hub base (the registry's host). multi: each file opens its own window.
+export function registerFrameApp(id, config) {
+  frameApps.set(id, { id, ...config });
+}
+
+export function isFrameApp(id) {
+  return frameApps.has(id);
+}
+
+function hubBase() {
+  return new URL("/", registryUrl()).href;
 }
 
 function normalize(data, sourceUrl) {
@@ -114,12 +133,14 @@ function flushPendingFile(fr) {
 let stopListening = null;
 function ensureListener() {
   stopListening ??= listen(window, hubOrigins(), (msg, ev) => {
+    const fr = [...document.querySelectorAll("iframe[data-hub-origin]")].find((f) => f.contentWindow === ev.source);
+    if (!fr) return;
     if (msg.type === "inkos-ready") {
-      const fr = [...document.querySelectorAll("iframe[data-hub-origin]")].find((f) => f.contentWindow === ev.source);
-      if (fr) {
-        syncTheme();
-        flushPendingFile(fr);
-      }
+      syncTheme();
+      flushPendingFile(fr);
+    } else if (msg.type === "inkos-title") {
+      const winId = fr.closest(".window")?.dataset.winId;
+      if (winId) wmInstance?.setTitle(winId, msg.title);
     }
   });
 }
@@ -150,32 +171,55 @@ export async function openApp(appId, desktopEl, ctx = {}) {
     });
   }
 
+  const frame = frameApps.get(appId);
+  if (frame) {
+    const url = new URL(frame.path, hubBase());
+    if (ctx.file) url.searchParams.set("file", "1");
+    // The first window is the app's own; a file for a multi-window app (a second program)
+    // gets a window of its own, and a file for the others goes to the open window.
+    const base = `frame-${appId}`;
+    const winId = frame.multi && ctx.file && wmInstance.windows.has(base) ? `${base}-${++frameSeq}` : base;
+    if (wmInstance.windows.has(winId) && ctx.file) {
+      const fr = document.querySelector(`.window[data-win-id="${CSS.escape(winId)}"] iframe[data-hub-origin]`);
+      if (fr) send(fr.contentWindow, fr.dataset.hubOrigin, fileMessage(ctx.file.name, ctx.file.mime, ctx.file.bytes));
+    }
+    return openFrameWindow(winId, { url: url.href, origin: url.origin, title: frame.title, width: frame.width, height: frame.height }, ctx);
+  }
+
   const { apps } = await loadHubRegistry();
   const entry = apps.find((a) => a.id === appId);
   if (!entry) throw new Error(`App "${appId}" não está no registry do Hub.`);
-  ensureListener();
   const winId = `hub-${appId}`;
+  const existed = wmInstance.windows.has(winId);
+  const body = openFrameWindow(winId, { url: entry.url, origin: entry.origin, title: entry.name || appId, width: entry.width, height: entry.height, tab: entry.tab }, ctx);
+  if (existed && ctx.file) sendFileToApp(appId, ctx.file);
+  return body;
+}
+
+// A window holding a Hub page (cross-origin iframe). A file in ctx waits for the page's inkos-ready.
+function openFrameWindow(winId, { url, origin, title, width, height, tab }, ctx = {}) {
+  ensureListener();
   const existed = wmInstance.windows.has(winId);
   const body = wmInstance.createWindow({
     id: winId,
-    title: entry.name || appId,
-    width: entry.width || 900,
-    height: entry.height || 600,
+    title,
+    width: width || 900,
+    height: height || 600,
     onClose: () => {
       const i = hubOpenOrder.indexOf(winId);
       if (i >= 0) hubOpenOrder.splice(i, 1);
     },
     renderContent: (bodyEl) => {
       const fr = document.createElement("iframe");
-      fr.src = entry.url;
-      fr.dataset.hubOrigin = entry.origin;
-      fr.title = entry.name || appId;
+      fr.src = url;
+      fr.dataset.hubOrigin = origin;
+      fr.title = title;
       fr.loading = "lazy";
       fr.referrerPolicy = "no-referrer";
       // Cross-origin frame: allow-same-origin keeps the Hub app's own origin (its
       // storage), not ours. Permissions only for what Hub apps use.
       fr.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads");
-      fr.setAttribute("allow", "cross-origin-isolated; camera; microphone; clipboard-read; clipboard-write; fullscreen; autoplay");
+      fr.setAttribute("allow", "cross-origin-isolated; camera; microphone; clipboard-read; clipboard-write; fullscreen; autoplay; gamepad");
       fr.style.cssText = "width:100%;height:100%;border:0;background:var(--panel-solid);";
       if (ctx.file) pendingFiles.set(fr, ctx.file);
       fr.addEventListener("load", () => {
@@ -183,9 +227,9 @@ export async function openApp(appId, desktopEl, ctx = {}) {
         if (pendingFiles.has(fr)) setTimeout(() => flushPendingFile(fr), 4000);
       });
       bodyEl.append(fr);
-      if (entry.tab) {
+      if (tab) {
         const a = document.createElement("a");
-        a.href = entry.url;
+        a.href = url;
         a.target = "_blank";
         a.rel = "noopener";
         a.className = "hub-open-tab";
@@ -195,13 +239,12 @@ export async function openApp(appId, desktopEl, ctx = {}) {
     },
   });
   if (!existed) trackHubWindow(winId);
-  if (existed && ctx.file) sendFileToApp(appId, ctx.file);
   return body;
 }
 
 export function closeApp(appId) {
   if (!wmInstance) return;
-  for (const id of [`native-${appId}`, `hub-${appId}`]) if (wmInstance.windows.has(id)) wmInstance.close(id);
+  for (const id of [`native-${appId}`, `hub-${appId}`, `frame-${appId}`]) if (wmInstance.windows.has(id)) wmInstance.close(id);
 }
 
 export async function mountLauncher(gridEl, desktopEl, { filterText = "" } = {}) {
@@ -210,8 +253,8 @@ export async function mountLauncher(gridEl, desktopEl, { filterText = "" } = {})
   const { apps, source } = await loadHubRegistry();
 
   const items = [
-    ...[...nativeApps.values()].map((n) => ({ id: n.id, name: n.title || n.id, kind: "Nativo", icon: null })),
-    ...apps.filter((a) => !nativeApps.has(a.id)).map((a) => ({ id: a.id, name: a.name || a.id, kind: source === "hub" ? "Hub" : "Hub (offline)", icon: a.icon })),
+    ...[...nativeApps.values(), ...frameApps.values()].map((n) => ({ id: n.id, name: n.label || n.title || n.id, kind: "Nativo", icon: null })),
+    ...apps.filter((a) => !nativeApps.has(a.id) && !HIDDEN_HUB_APPS.has(a.id)).map((a) => ({ id: a.id, name: a.name || a.id, kind: source === "hub" ? "Hub" : "Hub (offline)", icon: a.icon })),
   ];
   const filtered = q ? items.filter((i) => i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q)) : items;
 

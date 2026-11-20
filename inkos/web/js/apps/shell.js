@@ -1,4 +1,5 @@
-// Terminal interativo do InkOS conectado ao VFS, sessão (.inkos) e aos apps
+// Shell InkOS: comandos do VFS, sessão (.inkos) e ferramentas de arquivos.
+// O Terminal de verdade (Alpine Linux no motor InkSoC) é o app "shell" (InkShell).
 export function mountShell(root, { vfs, openApp }) {
   let cwd = "/Home";
   const hist = [];
@@ -57,10 +58,10 @@ export function mountShell(root, { vfs, openApp }) {
         // Full Linux terminal: InkShell (Alpine on InkSoC) from the Hub.
         if (rest[0]) {
           const p = resolvePath(rest[0]);
-          await vfs.serveToHubApp(p, "terminal", (id, file) => openApp(id, undefined, { file }));
+          await vfs.serveToHubApp(p, "shell", (id, file) => openApp(id, undefined, { file }));
           print(`${p} → Linux (home)`);
         } else {
-          await openApp("terminal");
+          await openApp("shell");
           print("Abrindo Linux (InkShell)…");
         }
         break;
@@ -120,8 +121,9 @@ export function mountShell(root, { vfs, openApp }) {
         print(`Abrindo ${rest[0]}...`);
         break;
       case "exe":
-        await openApp("cmdexe", undefined, { exePath: rest[0] ? resolvePath(rest[0]) : undefined });
-        print("Abrindo CMD / Instalador .EXE...");
+        if (rest[0]) await vfs.serveToHubApp(resolvePath(rest[0]), "cmdexe", (id, file) => openApp(id, undefined, { file }));
+        else await openApp("cmdexe");
+        print("Abrindo no CMD/EXE (motor InkSoC)…");
         break;
       case "search":
       case "rename":

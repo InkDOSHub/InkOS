@@ -41,3 +41,10 @@ test("listen drops messages from non-allowlisted origins", () => {
   t.dispatchEvent(ev("https://hub.inkdos.workers.dev", { v: 1, type: "inkos-ready" }));
   assert.deepEqual(got, ["inkos-ready"]);
 });
+
+test("inkos-title: a short title is valid, empty or long is dropped", () => {
+  assert.ok(validate({ v: 1, type: "inkos-title", title: "winemine" }));
+  assert.equal(validate({ v: 1, type: "inkos-title", title: "" }), null);
+  assert.equal(validate({ v: 1, type: "inkos-title", title: "x".repeat(129) }), null);
+  assert.equal(validate({ v: 1, type: "inkos-title" }), null);
+});

@@ -261,6 +261,15 @@ export class WindowManager {
     return bodyEl;
   }
 
+  setTitle(id, title) {
+    const w = this.windows.get(id);
+    if (!w || !title || w.title === title) return;
+    w.title = title;
+    const t = w.el.querySelector(".win-title-text");
+    if (t) t.textContent = title;
+    this._emit();
+  }
+
   focus(id, { deferEmit = false } = {}) {
     const target = this.windows.get(id);
     if (!target) return;

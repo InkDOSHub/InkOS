@@ -14,6 +14,8 @@ const SCHEMAS = {
     typeof m.mime === "string" && m.mime.length <= 255 &&
     m.data instanceof ArrayBuffer,
   "inkos-ready": (m) => m.app === undefined || (typeof m.app === "string" && m.app.length <= 64),
+  // An app names what it shows (the InkSoC engine: the program in front); InkOS puts it in the title bar.
+  "inkos-title": (m) => typeof m.title === "string" && m.title.length > 0 && m.title.length <= 128,
 };
 
 export function validate(msg) {
