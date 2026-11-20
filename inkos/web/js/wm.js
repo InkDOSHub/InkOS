@@ -9,6 +9,26 @@ export class WindowManager {
     this.windows = new Map();
     this.zCounter = 10;
     this.workspace = 1;
+    // Keep windows inside the desktop when it changes size (rotation, external
+    // monitor, on-screen keyboard, modifier bar).
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(() => this.fitAll()).observe(desktopEl);
+    }
+  }
+
+  fitAll() {
+    const dw = this.desktopEl.clientWidth;
+    const dh = this.desktopEl.clientHeight;
+    if (!dw || !dh) return;
+    for (const w of this.windows.values()) {
+      if (!w.maximized) {
+        w.width = Math.min(w.width, Math.max(320, dw));
+        w.height = Math.min(w.height, Math.max(220, dh));
+        w.x = Math.min(Math.max(0, w.x), Math.max(0, dw - w.width));
+        w.y = Math.min(Math.max(0, w.y), Math.max(0, dh - w.height));
+      }
+      this._applyGeometry(w);
+    }
   }
 
   setWorkspace(ws) {

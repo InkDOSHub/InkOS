@@ -307,6 +307,23 @@ for (const name of wanted) {
       assert.equal(overflow, false, `${dev}: horizontal overflow`);
       const small = await page.$$eval("#dock .dock-item", (els) => els.filter((e) => e.getBoundingClientRect().height < 44).length);
       assert.equal(small, 0, `${dev}: dock targets < 44px`);
+      const topOverflow = await page.$eval(".topbar", (el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1);
+      assert.equal(topOverflow, false, `${dev}: topbar overflows`);
+      // modifier bar: arrow key reaches the focused shell input; Ctrl sticky / lock
+      await page.tap("#dock .dock-item >> nth=3");
+      const sh = page.locator("#sh-in");
+      await sh.waitFor();
+      await sh.fill("pwd");
+      await sh.press("Enter");
+      await page.tap("#keys-toggle");
+      await page.tap('#modifier-bar button[data-key="ArrowUp"]');
+      assert.equal(await sh.inputValue(), "pwd", `${dev}: ArrowUp from modifier bar`);
+      const ctrl = page.locator('#modifier-bar button[data-key="Control"]');
+      await ctrl.tap();
+      assert.match(await ctrl.getAttribute("class") || "", /mod-on/);
+      await ctrl.tap();
+      await ctrl.tap();
+      await page.waitForTimeout(50);
       await page.screenshot({ path: `${SHOTS}/${name}-${dev.replace(/\s+/g, "-")}.png` });
       assert.deepEqual(errors, []);
       await ctx.close();

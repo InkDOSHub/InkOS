@@ -564,3 +564,48 @@ html, body {
   background: rgba(140, 144, 158, 0.38);
   border-color: transparent;
 }
+
+/* ---- Touch / mobile (E2.3) ---- */
+.lbl-short { display: none; }
+.modifier-bar {
+  bottom: calc(72px + var(--kb-inset, 0px));
+}
+.modifier-bar button.mod-on { background: var(--accent-soft); border-color: var(--accent); }
+.modifier-bar button.mod-lock { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.window-body { touch-action: pan-x pan-y; overscroll-behavior: contain; }
+html, body { overscroll-behavior: none; }
+.is-touch .top-pill,
+.is-touch .modifier-bar button,
+.is-touch .dock-item { min-height: 44px; min-width: 44px; }
+.is-touch .mac-light { position: relative; width: 16px; height: 16px; }
+.is-touch .mac-light::after { content: ""; position: absolute; inset: -14px; }
+.is-touch .mac-lights { gap: 22px; margin-right: 14px; }
+@media (max-width: 699px) {
+  .topbar { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); gap: 4px; }
+  .lbl-long, .topbar .brand, #isolation-badge { display: none; }
+  .lbl-short { display: inline; }
+  #clock { font-size: 12px; white-space: nowrap; }
+  .top-pill { padding: 4px 8px; }
+  .dock { gap: 4px; padding: 4px 6px; }
+  .dock-item span { display: none; }
+}
+@media (display-mode: fullscreen), (display-mode: standalone) {
+  .topbar { padding-top: env(safe-area-inset-top); }
+}
+.is-touch .topbar { height: auto; min-height: 52px; padding-top: 4px; padding-bottom: 4px; }
+@media (max-width: 699px) {
+  .modifier-bar {
+    left: 8px; right: 8px; transform: none;
+    flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+    bottom: calc(72px + var(--kb-inset, 0px)); margin-bottom: 0;
+  }
+  .modifier-bar button { flex: 0 0 auto; }
+  .kb-open .dock-wrap { display: none; }
+  .kb-open .modifier-bar { bottom: calc(4px + var(--kb-inset, 0px)); }
+}
+.is-touch .desktop { top: 52px; }
+@media (max-width: 699px) {
+  /* The desktop (and its windows, via WindowManager.fitAll) shrinks so the
+     modifier bar never covers the focused field. */
+  .mods-open .desktop { bottom: calc(132px + var(--kb-inset, 0px)); }
+}

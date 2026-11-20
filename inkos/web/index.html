@@ -13,9 +13,9 @@
 <body>
   <header class="topbar" role="banner">
     <div class="topbar-left">
-      <button id="ws-toggle" class="top-pill" type="button">Workspaces</button>
-      <button id="top-apps-btn" class="top-pill" type="button">Applications</button>
-      <strong style="margin-left:4px;font-size:13px;">InkOS</strong>
+      <button id="ws-toggle" class="top-pill" type="button" aria-label="Workspaces"><span class="lbl-long">Workspaces</span><span class="lbl-short">WS</span></button>
+      <button id="top-apps-btn" class="top-pill" type="button" aria-label="Applications"><span class="lbl-long">Applications</span><span class="lbl-short">Apps</span></button>
+      <strong class="brand" style="margin-left:4px;font-size:13px;">InkOS</strong>
     </div>
     <div class="topbar-center">
       <span id="clock" style="font-weight:600;">--:--</span>
@@ -23,7 +23,7 @@
     <div class="topbar-right">
       <span id="isolation-badge" class="badge-iso"></span>
       <button id="keys-toggle" class="top-pill" type="button" title="Teclas modificadoras">Keys</button>
-      <button id="theme-toggle" class="top-pill" type="button" aria-label="Alternar tema claro e escuro">◐</button>
+      <button id="theme-toggle" class="top-pill" type="button" aria-label="Alternar tema claro e escuro">Tema</button>
     </div>
   </header>
 
@@ -95,19 +95,6 @@
     const wsRail = document.querySelector("#workspace-rail");
     document.querySelector("#ws-toggle").addEventListener("click", () => {
       wsRail.classList.toggle("open");
-    });
-
-    const modBar = document.querySelector("#modifier-bar");
-    document.querySelector("#keys-toggle").addEventListener("click", () => {
-      modBar.classList.toggle("open");
-    });
-    modBar.querySelectorAll("button[data-key]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const active = document.activeElement;
-        if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
-          active.dispatchEvent(new KeyboardEvent("keydown", { key: btn.dataset.key, bubbles: true }));
-        }
-      });
     });
 
     const [{ WindowManager }, appload] = await Promise.all([
