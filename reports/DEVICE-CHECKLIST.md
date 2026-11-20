@@ -31,3 +31,4 @@ marcar ✓/✗ + modelo/versão iOS/Safari. ✗ → print + console (Safari > De
 - ✓ boot, janelas, botões de sinal, Ajustes, Finder, navegador, tema, Keys, menu de contexto (toque longo)
 - ✗→✓ toques dentro de janela perdiam o click no WebKit iOS (redesenho da Dock no pointerdown). corrigido a16a7cc, confirmado no aparelho
 - ○ atalhos de teclado físico (sem teclado no iPhone) · Ctrl na barra de teclas · InkBench JSON (link: /bench/device.html)
+- ✓ InkBench rodou no iPhone 17 Pro Max (Safari 27.2, isolado): bench/results/iphone-17-pro-max.json. wasm iPhone 1,3–2,6× mais rápido que wasm no host Xeon. veredito vs nativo segue PENDENTE (iOS não roda o binário nativo; precisa referência via Xcode/Swift ou Mac M-series).

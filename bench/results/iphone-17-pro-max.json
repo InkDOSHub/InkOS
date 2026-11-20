@@ -1,0 +1,17 @@
+{
+ "schema": "inkbench/1",
+ "mode": "device",
+ "device": "iphone-17-pro-max",
+ "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Mobile/15E148 Safari/604.1",
+ "isolated": true,
+ "date": "2026-11-20T12:22:36.992Z",
+ "kernels": {
+  "cpu.int": 71.78,
+  "cpu.float": 25.12,
+  "cpu.sha256": 97.88,
+  "cpu.matmul": 6.26,
+  "mem.copy": 22.7,
+  "mem.alloc": 5,
+  "vfs.opfs_rw_8mib": 9.04
+ }
+}

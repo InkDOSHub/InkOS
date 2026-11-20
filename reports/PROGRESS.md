@@ -28,7 +28,7 @@ branch: autopilot/2026-11-20. base 842113e (main). tag local `pre-autopilot-2026
 | E4.2/4.2a por referência + isolamento | FEITO (Chromium) | cff7360 | e5-5-e2e.txt (Hub registry+iframe) |
 | E4.3 postMessage v1 | PARCIAL: InkOS feito; Hub lado em PR #78 | cff7360 | unit.txt, docs/PROTOCOL.md |
 | E4.4 matriz apps | PARCIAL: 25/25 carregam; tema falha em 8; vfs-file depende Hub#78 | cff7360 | apps-matrix.md |
-| E4.5 InkBench | PARCIAL: host geomean 0.841; veredito PENDENTE-DISPOSITIVO | cff7360 | evidence/bench-host.json |
+| E4.5 InkBench | PARCIAL: host geomean 0.841; iPhone 17 Pro Max rodou (bench/results); veredito vs nativo PENDENTE | cff7360 | evidence/bench-host.json |
 | E4.6 modo Hub/Desktop (seam) | FEITO | cff7360 | docs/adr/ADR-modo-hub-desktop.md |
 | E4.7 publicação | PARCIAL: SW gerado + preview verde; prod = merge | 4b8244a | e5-2.txt, e1-7-preview.txt |
 | E5.1 inkmenu.py | FEITO (clean-room) | 1479877 | unit.txt (tools), D12 |
