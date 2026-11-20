@@ -14,8 +14,9 @@ Sistema operacional web experimental em **Rust / WebAssembly** com interface des
 - **Aplicativos Nativos:**
   - **Finder:** gerenciamento de pastas/arquivos, importação/exportação e envio direto de arquivos para os apps do Hub.
   - **InkBrowser:** navegação web e visualização de arquivos internos via protocolo `vfs://`.
-  - **InkShell (Terminal):** shell interativo integrado ao VFS.
-  - **CMD & Instalador `.EXE`:** prompt de comandos e simulação/execução de pacotes.
+  - **Terminal:** Alpine Linux de verdade (InkShell, no motor InkSoC), com `apk` e internet.
+  - **CMD/EXE:** `cmd.exe` e programas `.exe` no motor InkSoC; cada programa ganha sua janela.
+  - **Shell InkOS:** comandos do VFS, sessões `.inkos` e ferramentas de arquivo (Apps → Shell InkOS).
   - **Monitor de Sistema:** acompanhamento em tempo real de FPS, memória, armazenamento e processos/janelas ativas.
   - **Configurações:** seleção de planos de fundo (nativos ou imagem local/VFS), temas (**Mocha / Latte**), cor de destaque e escala da Dock.
 
@@ -28,7 +29,7 @@ Sistema operacional web experimental em **Rust / WebAssembly** com interface des
 - **Sessões `.inkos`.** "Congelar" salva a sessão num arquivo criptografado (AES-GCM-256, chave derivada da senha por PBKDF2-SHA256). O arquivo inteiro é verificado antes de restaurar. Formato em `docs/INKOS-FORMAT.md`.
 - **Apps do Hub por referência.** A lista de apps vem do registry do InkDOS Hub; cada app abre num iframe do próprio Hub. Tema e arquivos vão pelo protocolo `docs/PROTOCOL.md`. Ver `docs/ECOSYSTEM.md`.
 - **Toque e iPad/iPhone.** Toque com dois dedos e toque longo abrem o menu de contexto; barra de teclas com Esc, Tab, Ctrl, Opt, Cmd e setas.
-- **Ferramentas de arquivo no Terminal.** `search`, `rename` e `sync` (com `--preview` para ver antes de mudar).
+- **Ferramentas de arquivo no Shell InkOS.** `search`, `rename` e `sync` (com `--preview` para ver antes de mudar).
 
 ## Build e testes
 
@@ -62,5 +63,6 @@ MIT. Dependências em `THIRD_PARTY_LICENSES.md`.
 ## Limites conhecidos
 
 - Testado só no Chromium (headless). Safari, iPhone e iPad ainda precisam ser testados à mão: `reports/DEVICE-CHECKLIST.md`.
-- Alguns apps do Hub ainda não seguem o tema do InkOS (suíte InkDOS, Terminal, Wine). Receber arquivos do Finder depende do PR do Hub.
+- Alguns apps do Hub ainda não seguem o tema do InkOS (suíte InkDOS, Terminal, CMD/EXE).
+- Drive C: do InkSoC e a home do Linux ficam no armazenamento do Hub, não no VFS do InkOS: arquivos entram pelo Finder (Abrir / Enviar ao Terminal).
 - Deploy: o Cloudflare Pages publica cada branch como preview; produção atualiza com o merge em `main`.

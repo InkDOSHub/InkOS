@@ -6,10 +6,16 @@ import { themeMessage, fileMessage, send, listen, DEFAULT_HUB_ORIGINS } from "./
 
 export const DEFAULT_REGISTRY_URL = "https://hub.inkdos.workers.dev/InkOS/apps/registry.json";
 export const MAX_HUB_INSTANCES = 4;
+// Hub entries InkOS already has as its own apps (Terminal, CMD/EXE) or that are InkOS itself.
+const HIDDEN_HUB_APPS = new Set(["inkos", "wine", "inksoc", "terminal", "alpine"]);
 
 let wmInstance = null;
 let defaultDesktop = null;
 const nativeApps = new Map();
+// InkOS apps whose engine is a Hub page: the window is InkOS's, the page inside has no
+// chrome of its own (InkSoC: Windows programs; InkShell: Alpine Linux).
+const frameApps = new Map();
+let frameSeq = 0;
 let registryPromise = null;
 const hubOpenOrder = []; // window ids, oldest first
 
@@ -35,6 +41,19 @@ export function bindWindowManager(wm) {
 
 export function registerNativeApp(id, config) {
   nativeApps.set(id, { id, ...config });
+}
+
+// path: relative to the Hub base (the registry's host). multi: each file opens its own window.
+export function registerFrameApp(id, config) {
+  frameApps.set(id, { id, ...config });
+}
+
+export function isFrameApp(id) {
+  return frameApps.has(id);
+}
+
+export function hubBase() {
+  return new URL("/", registryUrl()).href;
 }
 
 function normalize(data, sourceUrl) {
@@ -114,12 +133,22 @@ function flushPendingFile(fr) {
 let stopListening = null;
 function ensureListener() {
   stopListening ??= listen(window, hubOrigins(), (msg, ev) => {
+    const fr = [...document.querySelectorAll("iframe[data-hub-origin]")].find((f) => f.contentWindow === ev.source);
+    if (!fr) return;
+    if (msg.type === "inksoc-programs") {
+      setWindowsPrograms(msg.programs);
+      if (fr.dataset.listOnly) fr.remove();
+      return;
+    }
     if (msg.type === "inkos-ready") {
-      const fr = [...document.querySelectorAll("iframe[data-hub-origin]")].find((f) => f.contentWindow === ev.source);
-      if (fr) {
-        syncTheme();
-        flushPendingFile(fr);
-      }
+      syncTheme();
+      flushPendingFile(fr);
+    } else if (msg.type === "inkos-title") {
+      const winId = fr.closest(".window")?.dataset.winId;
+      if (winId) wmInstance?.setTitle(winId, msg.title);
+    } else if (msg.type === "inkos-size") {
+      const winId = fr.closest(".window")?.dataset.winId;
+      if (winId) wmInstance?.fitContent(winId, msg.width, msg.height);
     }
   });
 }
@@ -150,32 +179,57 @@ export async function openApp(appId, desktopEl, ctx = {}) {
     });
   }
 
+  const frame = frameApps.get(appId);
+  if (frame) {
+    const url = new URL(frame.path, hubBase());
+    if (ctx.file) url.searchParams.set("file", "1");
+    if (ctx.run) url.searchParams.set("run", ctx.run);
+    // The first window is the app's own; a file or an installed program for a multi-window
+    // app gets a window of its own, and a file for the others goes to the open window.
+    const base = `frame-${appId}`;
+    const own = ctx.file || ctx.run;
+    const winId = frame.multi && own && (ctx.run || wmInstance.windows.has(base)) ? `${base}-${++frameSeq}` : base;
+    if (wmInstance.windows.has(winId) && ctx.file) {
+      const fr = document.querySelector(`.window[data-win-id="${CSS.escape(winId)}"] iframe[data-hub-origin]`);
+      if (fr) send(fr.contentWindow, fr.dataset.hubOrigin, fileMessage(ctx.file.name, ctx.file.mime, ctx.file.bytes));
+    }
+    return openFrameWindow(winId, { url: url.href, origin: url.origin, title: ctx.title || frame.title, width: frame.width, height: frame.height }, ctx);
+  }
+
   const { apps } = await loadHubRegistry();
   const entry = apps.find((a) => a.id === appId);
   if (!entry) throw new Error(`App "${appId}" não está no registry do Hub.`);
-  ensureListener();
   const winId = `hub-${appId}`;
+  const existed = wmInstance.windows.has(winId);
+  const body = openFrameWindow(winId, { url: entry.url, origin: entry.origin, title: entry.name || appId, width: entry.width, height: entry.height, tab: entry.tab }, ctx);
+  if (existed && ctx.file) sendFileToApp(appId, ctx.file);
+  return body;
+}
+
+// A window holding a Hub page (cross-origin iframe). A file in ctx waits for the page's inkos-ready.
+function openFrameWindow(winId, { url, origin, title, width, height, tab }, ctx = {}) {
+  ensureListener();
   const existed = wmInstance.windows.has(winId);
   const body = wmInstance.createWindow({
     id: winId,
-    title: entry.name || appId,
-    width: entry.width || 900,
-    height: entry.height || 600,
+    title,
+    width: width || 900,
+    height: height || 600,
     onClose: () => {
       const i = hubOpenOrder.indexOf(winId);
       if (i >= 0) hubOpenOrder.splice(i, 1);
     },
     renderContent: (bodyEl) => {
       const fr = document.createElement("iframe");
-      fr.src = entry.url;
-      fr.dataset.hubOrigin = entry.origin;
-      fr.title = entry.name || appId;
+      fr.src = url;
+      fr.dataset.hubOrigin = origin;
+      fr.title = title;
       fr.loading = "lazy";
       fr.referrerPolicy = "no-referrer";
       // Cross-origin frame: allow-same-origin keeps the Hub app's own origin (its
       // storage), not ours. Permissions only for what Hub apps use.
       fr.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads");
-      fr.setAttribute("allow", "cross-origin-isolated; camera; microphone; clipboard-read; clipboard-write; fullscreen; autoplay");
+      fr.setAttribute("allow", "cross-origin-isolated; camera; microphone; clipboard-read; clipboard-write; fullscreen; autoplay; gamepad");
       fr.style.cssText = "width:100%;height:100%;border:0;background:var(--panel-solid);";
       if (ctx.file) pendingFiles.set(fr, ctx.file);
       fr.addEventListener("load", () => {
@@ -183,9 +237,9 @@ export async function openApp(appId, desktopEl, ctx = {}) {
         if (pendingFiles.has(fr)) setTimeout(() => flushPendingFile(fr), 4000);
       });
       bodyEl.append(fr);
-      if (entry.tab) {
+      if (tab) {
         const a = document.createElement("a");
-        a.href = entry.url;
+        a.href = url;
         a.target = "_blank";
         a.rel = "noopener";
         a.className = "hub-open-tab";
@@ -195,52 +249,133 @@ export async function openApp(appId, desktopEl, ctx = {}) {
     },
   });
   if (!existed) trackHubWindow(winId);
-  if (existed && ctx.file) sendFileToApp(appId, ctx.file);
   return body;
 }
 
 export function closeApp(appId) {
   if (!wmInstance) return;
-  for (const id of [`native-${appId}`, `hub-${appId}`]) if (wmInstance.windows.has(id)) wmInstance.close(id);
+  for (const id of [`native-${appId}`, `hub-${appId}`, `frame-${appId}`]) if (wmInstance.windows.has(id)) wmInstance.close(id);
 }
 
+/* ---------- Windows programs installed on the InkSoC drive C: ----------
+   The engine page sends the list (inksoc-programs) whenever it loads or a program ends;
+   Apps asks for it with a hidden engine frame (?list=1). Kept in localStorage so Apps shows
+   the programs at once. */
+const WIN_KEY = "inkos-win-programs";
+let winPrograms = [];
+try { winPrograms = JSON.parse(localStorage.getItem(WIN_KEY)) || []; } catch (_) {}
+const programListeners = new Set();
+function setWindowsPrograms(list) {
+  winPrograms = list.map((p) => ({ name: p.name, path: p.path }));
+  try { localStorage.setItem(WIN_KEY, JSON.stringify(winPrograms)); } catch (_) {}
+  for (const fn of programListeners) fn(winPrograms);
+}
+export function windowsPrograms() {
+  return winPrograms.slice();
+}
+let lastRefresh = 0;
+export function refreshWindowsPrograms() {
+  const engine = frameApps.get("cmdexe");
+  if (!engine || Date.now() - lastRefresh < 5000) return;
+  lastRefresh = Date.now();
+  ensureListener();
+  const url = new URL(engine.path, hubBase());
+  url.searchParams.set("list", "1");
+  const fr = document.createElement("iframe");
+  fr.src = url.href;
+  fr.dataset.hubOrigin = url.origin;
+  fr.dataset.listOnly = "1";
+  fr.title = "InkSoC programs";
+  fr.setAttribute("sandbox", "allow-scripts allow-same-origin");
+  fr.setAttribute("aria-hidden", "true");
+  fr.tabIndex = -1;
+  fr.style.cssText = "position:fixed;width:1px;height:1px;left:-10px;top:-10px;border:0;opacity:0;pointer-events:none;";
+  document.body.append(fr);
+  setTimeout(() => fr.remove(), 20000);
+}
+export function openWindowsProgram(path, name, desktopEl) {
+  return openApp("cmdexe", desktopEl, { run: path, title: name });
+}
+
+// Apps, like Launchpad / the Start menu: big icons with the name below, in sections
+// (InkOS, Windows programs, InkDOS Hub), and a search over all of them.
 export async function mountLauncher(gridEl, desktopEl, { filterText = "" } = {}) {
   if (desktopEl) defaultDesktop = desktopEl;
   const q = String(filterText || "").trim().toLowerCase();
-  const { apps, source } = await loadHubRegistry();
-
-  const items = [
-    ...[...nativeApps.values()].map((n) => ({ id: n.id, name: n.title || n.id, kind: "Nativo", icon: null })),
-    ...apps.filter((a) => !nativeApps.has(a.id)).map((a) => ({ id: a.id, name: a.name || a.id, kind: source === "hub" ? "Hub" : "Hub (offline)", icon: a.icon })),
-  ];
-  const filtered = q ? items.filter((i) => i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q)) : items;
-
-  gridEl.innerHTML = "";
-  if (!filtered.length) {
-    gridEl.innerHTML = `<div style="padding:16px;font-size:12.5px;color:var(--muted);">Nenhum aplicativo encontrado.</div>`;
-    return;
-  }
-  for (const item of filtered) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "app-tile";
-    btn.dataset.appId = item.id;
-    const icon = document.createElement(item.icon ? "img" : "span");
-    if (item.icon) {
-      icon.src = item.icon;
-      icon.alt = "";
-      icon.width = icon.height = 28;
-      // no-cors load: the Hub sends CORP cross-origin (enough under COEP require-corp), not CORS.
-    } else {
-      icon.innerHTML = `<svg width="24" height="24" aria-hidden="true"><use href="./icons.svg#i-window"></use></svg>`;
+  const match = (name, id = "") => !q || name.toLowerCase().includes(q) || id.toLowerCase().includes(q);
+  const render = async () => {
+    const { apps, source } = await loadHubRegistry();
+    const sections = [
+      {
+        title: "InkOS",
+        items: [...nativeApps.values(), ...frameApps.values()]
+          .map((n) => ({ id: n.id, name: n.label || n.title || n.id, iconId: n.iconId || "i-window", open: () => openApp(n.id, defaultDesktop) })),
+      },
+      {
+        title: "Programas Windows",
+        empty: "Nenhum ainda. Abra um instalador .exe pelo Finder; o programa aparece aqui.",
+        items: winPrograms.map((p) => ({ id: p.path, name: p.name, iconId: "i-exe", hint: p.path, open: () => openWindowsProgram(p.path, p.name, defaultDesktop) })),
+      },
+      {
+        title: source === "hub" ? "InkDOS Hub" : "InkDOS Hub (offline)",
+        items: apps.filter((a) => !nativeApps.has(a.id) && !frameApps.has(a.id) && !HIDDEN_HUB_APPS.has(a.id))
+          .map((a) => ({ id: a.id, name: a.name || a.id, icon: a.icon, open: () => openApp(a.id, defaultDesktop) })),
+      },
+    ];
+    gridEl.replaceChildren();
+    let shown = 0;
+    for (const sec of sections) {
+      const items = sec.items.filter((i) => match(i.name, i.id));
+      if (!items.length && (q || !sec.empty)) continue;
+      const h = document.createElement("h3");
+      h.className = "app-section";
+      h.textContent = sec.title;
+      const grid = document.createElement("div");
+      grid.className = "app-tiles";
+      if (!items.length) {
+        const p = document.createElement("p");
+        p.className = "app-empty";
+        p.textContent = sec.empty;
+        grid.append(p);
+      }
+      for (const item of items) {
+        shown++;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "app-tile";
+        btn.dataset.appId = item.id;
+        if (item.hint) btn.title = item.hint;
+        const icon = document.createElement("span");
+        icon.className = "app-icon";
+        if (item.icon) {
+          const img = document.createElement("img");
+          img.src = item.icon;
+          img.alt = "";
+          img.loading = "lazy";
+          // no-cors load: the Hub sends CORP cross-origin (enough under COEP require-corp), not CORS.
+          icon.append(img);
+        } else {
+          icon.innerHTML = `<svg width="30" height="30" aria-hidden="true"><use href="./icons.svg#${item.iconId}"></use></svg>`;
+        }
+        const name = document.createElement("span");
+        name.className = "app-name";
+        name.textContent = item.name;
+        btn.append(icon, name);
+        btn.onclick = () => Promise.resolve(item.open()).catch((e) => console.error(e));
+        grid.append(btn);
+      }
+      gridEl.append(h, grid);
     }
-    const name = document.createElement("span");
-    name.textContent = item.name;
-    const kind = document.createElement("small");
-    kind.style.cssText = "font-size:10px;color:var(--muted);";
-    kind.textContent = item.kind;
-    btn.append(icon, name, kind);
-    btn.onclick = () => openApp(item.id, defaultDesktop).catch((e) => console.error(e));
-    gridEl.append(btn);
-  }
+    if (!shown && q) {
+      const p = document.createElement("p");
+      p.className = "app-empty";
+      p.textContent = "Nenhum aplicativo encontrado.";
+      gridEl.append(p);
+    }
+  };
+  await render();
+  // a list that arrives while Apps is open shows at once
+  programListeners.clear();
+  programListeners.add(() => { if (gridEl.isConnected && !gridEl.closest("[hidden]")) render().catch(console.error); });
+  refreshWindowsPrograms();
 }

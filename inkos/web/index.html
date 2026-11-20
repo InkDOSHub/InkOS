@@ -46,10 +46,10 @@
     <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
     <section class="launcher-overlay" id="launcher-window" hidden aria-label="Applications Launcher">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <strong>Applications — InkDOS Hub &amp; Nativos</strong>
+        <strong>Aplicativos</strong>
         <button id="launcher-close" class="mac-light close" type="button" aria-label="Fechar" style="color:rgba(0,0,0,.72);">×</button>
       </div>
-      <input id="launcher-search" class="launcher-search" type="search" placeholder="Type to search apps..." autocomplete="off">
+      <input id="launcher-search" class="launcher-search" type="search" placeholder="Buscar apps e programas" autocomplete="off">
       <div id="app-grid"></div>
     </section>
   </main>
@@ -117,6 +117,33 @@
     }
 
     let wm;
+    // macOS dock magnification: with a mouse, icons near the pointer grow (cosine falloff over
+    // ~2.5 icons), pushing their neighbours aside; touch screens keep the plain dock.
+    let dockMagnify = null;
+    if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      const BASE = 48, MAX = 1.85, RANGE = 150;
+      let mx = null, raf = 0;
+      dockMagnify = () => {
+        raf = 0;
+        for (const it of dockEl.querySelectorAll(".dock-item")) {
+          let k = 1;
+          if (mx !== null) {
+            const r = it.getBoundingClientRect();
+            const d = Math.abs(mx - (r.left + r.width / 2));
+            if (d < RANGE) k = 1 + (MAX - 1) * Math.cos((d / RANGE) * (Math.PI / 2));
+          }
+          it.style.setProperty("--mag", k.toFixed(3));
+        }
+      };
+      document.documentElement.classList.add("dock-magnify");
+      dockEl.addEventListener("pointermove", (e) => {
+        if (e.pointerType !== "mouse") return;
+        mx = e.clientX;
+        raf ||= requestAnimationFrame(dockMagnify);
+      });
+      dockEl.addEventListener("pointerleave", () => { mx = null; raf ||= requestAnimationFrame(dockMagnify); });
+      void BASE;
+    }
     const renderDock = (wins = []) => {
       dockEl.innerHTML = "";
       const pinned = [
@@ -124,7 +151,6 @@
         { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload.openApp("finder", desktopEl) },
         { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload.openApp("browser", desktopEl) },
         { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload.openApp("shell", desktopEl) },
-        { id: "terminal", label: "Linux", iconId: "i-terminal", action: () => appload.openApp("terminal", desktopEl) },
         { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload.openApp("cmdexe", desktopEl) },
         { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload.openApp("monitor", desktopEl) },
         { id: "settings", label: "Ajustes", iconId: "i-settings", action: () => appload.openApp("settings", desktopEl) },
@@ -133,22 +159,26 @@
         const b = document.createElement("button");
         b.type = "button";
         b.className = "dock-item";
-        const runningMatch = wins.find((w) => w.id === `native-${p.id}` || w.id === `hub-${p.id}`);
+        const runningMatch = wins.find((w) => w.id === `native-${p.id}` || w.id === `hub-${p.id}` || w.id === `frame-${p.id}`);
         if (runningMatch) b.classList.add("running");
         if (runningMatch?.focused) b.classList.add("focused");
         if (runningMatch) b.dataset.winId = runningMatch.id;
-        b.innerHTML = `${svgIcon(p.iconId, 20)}<span>${p.label}</span>`;
+        b.dataset.label = p.label;
+        b.setAttribute("aria-label", p.label);
+        b.innerHTML = `${svgIcon(p.iconId, 26)}<span>${p.label}</span>`;
         b.onclick = () => {
           if (runningMatch && runningMatch.focused && !runningMatch.minimized) {
             wm.minimize(runningMatch.id);
           } else {
+            // macOS: an app that starts bounces once
+            if (!runningMatch) { b.classList.add("bounce"); setTimeout(() => b.classList.remove("bounce"), 700); }
             p.action();
           }
         };
         dockEl.append(b);
       }
 
-      const openWins = wins.filter((w) => !/^(native-(finder|browser|shell|cmdexe|monitor|settings)|hub-terminal)$/.test(w.id));
+      const openWins = wins.filter((w) => !/^(native-(finder|browser|monitor|settings)|frame-(shell|cmdexe))$/.test(w.id));
       if (openWins.length > 0) {
         const sep = document.createElement("div");
         sep.className = "dock-sep";
@@ -157,10 +187,12 @@
           const b = document.createElement("button");
           b.type = "button";
           b.className = `dock-item running ${w.focused ? "focused" : ""}`;
-          b.title = w.title;
           b.dataset.winId = w.id;
+          b.dataset.label = w.title;
+          b.setAttribute("aria-label", w.title);
           const shortTitle = w.title.length > 12 ? w.title.slice(0, 11) + "…" : w.title;
-          b.innerHTML = `${svgIcon("i-window", 18)}<span>${shortTitle}</span>`;
+          const icon = /^native-vfs-shell$/.test(w.id) ? "i-terminal" : /^frame-cmdexe-/.test(w.id) ? "i-exe" : "i-window";
+          b.innerHTML = `${svgIcon(icon, 26)}<span>${shortTitle}</span>`;
           b.onclick = () => {
             if (w.focused && !w.minimized) wm.minimize(w.id);
             else wm.focus(w.id);
@@ -169,6 +201,7 @@
         }
       }
 
+      dockMagnify?.();
       const active = wins.find((w) => w.focused && !w.minimized);
       const activeEl = document.querySelector("#active-app");
       if (activeEl) activeEl.textContent = active ? active.title.split(" — ")[0] : "";
@@ -192,6 +225,8 @@
           { label: "Aplicativos…", action: () => toggleLauncher() },
           { label: "Finder", action: open("finder") },
           { label: "Terminal", action: open("shell") },
+          { label: "CMD/EXE", action: open("cmdexe") },
+          { label: "Shell InkOS", action: open("vfs-shell") },
           "-",
           { label: "Alternar tema", action: () => document.querySelector("#theme-toggle").click() },
           { label: "Ajustes", action: open("settings") },
@@ -222,6 +257,8 @@
             ? [{ label: document.fullscreenElement || document.webkitFullscreenElement ? "Sair da tela cheia" : "Tela cheia", action: () => toggleFullscreen() }]
             : [{ label: "Tela cheia: Compartilhar → Adicionar à Tela de Início", disabled: true }]),
           { label: "Recarregar InkOS", action: () => location.reload() },
+          "-",
+          { label: "Voltar ao InkDOS Hub", action: () => location.assign(appload.hubBase()) },
         ]);
       });
       cm.setContextMenu(dockEl, (e) => {
@@ -267,36 +304,59 @@
     };
 
     appload.registerNativeApp("finder", {
+      label: "Finder",
+      iconId: "i-finder",
       title: "Finder — Memória Interna InkOS",
       width: 820,
       height: 520,
       mount: lazyNative("./js/apps/finder.js", "mountFinder", "Crie inkos/web/js/apps/finder.js no repositório."),
     });
     appload.registerNativeApp("browser", {
+      label: "Browser",
+      iconId: "i-browser",
       title: "InkBrowser",
       width: 900,
       height: 600,
       mount: lazyNative("./js/apps/browser.js", "mountBrowser", "Crie inkos/web/js/apps/browser.js no repositório."),
     });
-    appload.registerNativeApp("shell", {
-      title: "Alpine Linux — InkShell",
-      width: 780,
-      height: 480,
+    appload.registerNativeApp("vfs-shell", {
+      label: "Shell InkOS",
+      iconId: "i-terminal",
+      title: "Shell InkOS — VFS e sessões",
+      width: 760,
+      height: 460,
       mount: lazyNative("./js/apps/shell.js", "mountShell", "Crie inkos/web/js/apps/shell.js no repositório."),
     });
-    appload.registerNativeApp("cmdexe", {
-      title: "CMD & Instalador .EXE",
-      width: 800,
-      height: 520,
-      mount: lazyNative("./js/apps/cmd-exe.js", "mountCmdExe", "Crie inkos/web/js/apps/cmd-exe.js no repositório."),
+    // Terminal and CMD/EXE: InkOS windows around the engines served by the Hub.
+    // InkShell runs Alpine Linux on the InkSoC engine; InkSoC runs cmd.exe or the .exe sent to it.
+    appload.registerFrameApp("shell", {
+      label: "Terminal",
+      iconId: "i-terminal",
+      title: "Terminal — Alpine Linux",
+      path: "InkShell/?inkos=1",
+      width: 780,
+      height: 500,
+    });
+    appload.registerFrameApp("cmdexe", {
+      label: "CMD/EXE",
+      iconId: "i-cmd",
+      title: "CMD — InkSoC",
+      path: "InkSoC/?inkos=1",
+      width: 820,
+      height: 560,
+      multi: true,
     });
     appload.registerNativeApp("monitor", {
+      label: "Monitor",
+      iconId: "i-monitor",
       title: "Monitor de Sistema",
       width: 680,
       height: 500,
       mount: lazyNative("./js/apps/monitor.js", "mountMonitor", "Crie inkos/web/js/apps/monitor.js no repositório."),
     });
     appload.registerNativeApp("settings", {
+      label: "Ajustes",
+      iconId: "i-settings",
       title: "Configurações & Planos de Fundo",
       width: 740,
       height: 500,
@@ -304,6 +364,11 @@
     });
 
     window.inkOS = { diag: { booting: true }, vfs, openApp: appload.openApp, closeApp: appload.closeApp };
+    // ?open=<app id>: open that app on start (the Hub's InkSoC link opens InkOS with ?open=cmdexe)
+    {
+      const startApp = new URLSearchParams(location.search).get("open");
+      if (startApp && /^[a-z0-9-]{1,40}$/.test(startApp)) appload.openApp(startApp, desktopEl).catch((e) => console.warn("[InkOS] ?open:", e.message));
+    }
     import("./js/kernel.js")
       .then(({ bootKernel }) => bootKernel({ pkgUrl: "../pkg/inkos.js", workerUrl: "./js/swap.worker.js" }))
       .then((booted) => {

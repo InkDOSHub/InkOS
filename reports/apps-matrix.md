@@ -1,6 +1,6 @@
 # apps-matrix
 
-ger: tests/e2e/apps-matrix.mjs. browser: Chromium headless (WebKit: BLOQUEADO B2). registry: 25 apps, fonte hub (https://hub.inkdos.workers.dev/InkOS/apps/registry.json). InkOS: https://inkos-5k7.pages.dev/.
+ger: tests/e2e/apps-matrix.mjs. browser: Chromium headless (WebKit: BLOQUEADO B2). registry: 25 apps, fonte hub (https://hub.inkdos.workers.dev/InkOS/apps/registry.json). InkOS: https://inkos-5k7.pages.dev.
 
 crit: 1 carrega iframe sob COOP/COEP · 2 lazy (0 iframes antes de abrir) · 3 tema ink-tema (Mocha→dark, Latte→light) · 4 inkos-vfs-file · 5 heap JS da aba após abrir · 6 erros console · 7 offline · 8 sandbox · 9 screenshots · 10 licença.
 
@@ -11,12 +11,12 @@ crit: 1 carrega iframe sob COOP/COEP · 2 lazy (0 iframes antes de abrir) · 3 t
 | Security (`seguranca`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Documents · ArtCraft (`wordcraft`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Spreadsheets · ArtCraft (`gridcraft`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 4 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
-| Presentations · ArtCraft (`deckcraft`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
+| Presentations · ArtCraft (`deckcraft`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 4 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Documents · InkDOS (`documentos`) | ok | true | ok | não (light) | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 4 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Spreadsheets · InkDOS (`planilhas`) | ok | true | ok | não (light) | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 4 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Presentations · InkDOS (`apresentacoes`) | ok | true | ok | não (light) | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 4 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Plain text (`texto`) | ok | true | ok | não (light) | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
-| EPUB reader (`epub`) | ok | true | ok | não (light) | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
+| EPUB reader (`epub`) | ok | true | ok | não (light) | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 4 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Photos (`foto`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Video (`video`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Music (`musica`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
@@ -24,11 +24,11 @@ crit: 1 carrega iframe sob COOP/COEP · 2 lazy (0 iframes antes de abrir) · 3 t
 | Webcam (`webcam`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Transfer (`transferir`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Whiteboard (`quadro`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 7 | 460 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
-| Code (`codigo`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 54 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
-| Linux terminal (`terminal`) | ok | true | ok | não (sem data-theme) | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 4 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
+| Code (`codigo`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 53 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
+| Linux terminal (`terminal`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 4 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Zip (`zip`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | AI Chat (`ia`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
-| InkSoC (`wine`) | ok | true | ok | não (sem data-theme) | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
+| InkSoC (`wine`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Games (`jogos`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 | Wasm Build (`wasm`) | ok | true | ok | ok | PARCIAL: Hub não escuta (PR Hub adiciona evento) | 3 | 0 | PENDENTE (SW do Hub) | padrão appload | gerado (fora do git, 16 MB) | ver Hub LICENCAS.md |
 

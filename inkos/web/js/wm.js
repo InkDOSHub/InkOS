@@ -213,6 +213,7 @@ export class WindowManager {
     el.querySelectorAll(".resize-handle").forEach((handle) => {
       handle.addEventListener("pointerdown", (ev) => {
         if (record.maximized) return;
+        record.userSized = true;
         ev.preventDefault();
         ev.stopPropagation();
         this.focus(id);
@@ -259,6 +260,39 @@ export class WindowManager {
 
     this._emit();
     return bodyEl;
+  }
+
+  // Size a window around its content (an iframe app that reports how big its own window is).
+  // Up to 1.5x, never larger than the desktop, kept centred where it was. A window the user
+  // resized or maximized keeps its size.
+  fitContent(id, cw, ch) {
+    const w = this.windows.get(id);
+    if (!w || w.maximized || w.userSized || !(cw > 0) || !(ch > 0)) return;
+    const dw = this.desktopEl.clientWidth;
+    const dh = this.desktopEl.clientHeight;
+    if (!dw || !dh) return;
+    const bar = w.el.querySelector(".window-title")?.offsetHeight || 0;
+    const k = Math.min(1.5, (dw - 16) / cw, (dh - 16 - bar) / ch);
+    const width = Math.max(320, Math.round(cw * k));
+    const height = Math.max(220, Math.round(ch * k + bar));
+    if (Math.abs(width - w.width) + Math.abs(height - w.height) < 4) return;
+    const cx = w.x + w.width / 2;
+    const cy = w.y + w.height / 2;
+    w.width = Math.min(width, dw);
+    w.height = Math.min(height, dh);
+    w.x = Math.min(Math.max(0, Math.round(cx - w.width / 2)), Math.max(0, dw - w.width));
+    w.y = Math.min(Math.max(0, Math.round(cy - w.height / 2)), Math.max(0, dh - w.height));
+    this._applyGeometry(w);
+    this._emit();
+  }
+
+  setTitle(id, title) {
+    const w = this.windows.get(id);
+    if (!w || !title || w.title === title) return;
+    w.title = title;
+    const t = w.el.querySelector(".win-title-text");
+    if (t) t.textContent = title;
+    this._emit();
   }
 
   focus(id, { deferEmit = false } = {}) {

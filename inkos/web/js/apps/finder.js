@@ -124,6 +124,8 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
         return [
           { label: "Abrir", action: () => btnOpen.onclick() },
           isFile && { label: "Abrir no Hub…", action: () => btnSendHub.onclick() },
+          isFile && { label: "Enviar ao Terminal (Linux)", action: () => vfs.serveToHubApp(item.path, "shell", (id, file) => openApp(id, undefined, { file })) },
+          isFile && /\.(exe|msi|lnk|zip)$/i.test(item.name) && { label: "Abrir no CMD/EXE (Windows)", action: () => vfs.serveToHubApp(item.path, "cmdexe", (id, file) => openApp(id, undefined, { file })) },
           isFile && { label: "Baixar", action: () => btnDl.onclick() },
           "-",
           { label: "Renomear", action: () => btnRen.onclick() },
@@ -176,8 +178,7 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
   root.querySelector("#f-import").onclick = () => fileInput.click();
   fileInput.onchange = async () => {
     for (const f of fileInput.files || []) {
-      const buf = new Uint8Array(await f.arrayBuffer());
-      await vfs.writeBytes(`${cwd}/${f.name}`, buf, f.type);
+      await vfs.writeFile(`${cwd}/${f.name}`, f, f.type);
     }
     fileInput.value = "";
     render();
@@ -205,9 +206,9 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
       }
       return;
     }
-    // Windows programs run in the InkSoC desktop (Wine), drawn in its window.
+    // Windows programs run on the InkSoC engine, in a window of their own.
     if (/\.(exe|msi|lnk)$/i.test(selected.name)) {
-      await vfs.serveToHubApp(selected.path, "wine", (id, file) => openApp(id, undefined, { file }));
+      await vfs.serveToHubApp(selected.path, "cmdexe", (id, file) => openApp(id, undefined, { file }));
       return;
     }
     if (selected.name.toLowerCase().endsWith(".pdf")) {

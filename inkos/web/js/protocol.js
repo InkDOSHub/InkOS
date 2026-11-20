@@ -12,8 +12,17 @@ const SCHEMAS = {
   "inkos-vfs-file": (m) =>
     typeof m.name === "string" && m.name.length > 0 && m.name.length <= 255 && !/[\/\\]/.test(m.name) &&
     typeof m.mime === "string" && m.mime.length <= 255 &&
-    m.data instanceof ArrayBuffer,
+    (m.data instanceof ArrayBuffer || (typeof Blob === "function" && m.data instanceof Blob)),
   "inkos-ready": (m) => m.app === undefined || (typeof m.app === "string" && m.app.length <= 64),
+  // An app names what it shows (the InkSoC engine: the program in front); InkOS puts it in the title bar.
+  "inkos-size": (m) =>
+    Number.isInteger(m.width) && Number.isInteger(m.height) && m.width >= 1 && m.width <= 4096 && m.height >= 1 && m.height <= 4096,
+  "inkos-title": (m) => typeof m.title === "string" && m.title.length > 0 && m.title.length <= 128,
+  // The InkSoC engine: the Windows programs installed on its drive C: (Apps shows them).
+  "inksoc-programs": (m) =>
+    Array.isArray(m.programs) && m.programs.length <= 200 &&
+    m.programs.every((p) => p && typeof p.name === "string" && p.name.length > 0 && p.name.length <= 128 &&
+      typeof p.path === "string" && p.path.length <= 260 && /^[A-Za-z]:\\[^\0-\x1f"*?<>|]*\.exe$/i.test(p.path)),
 };
 
 export function validate(msg) {
@@ -28,8 +37,10 @@ export function themeMessage(flavor, accent) {
   return m;
 }
 
+// bytes: a Blob (sent by reference, so a big file is not copied into memory),
+// an ArrayBuffer or a typed array.
 export function fileMessage(name, mime, bytes) {
-  const data = bytes instanceof ArrayBuffer ? bytes : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const data = typeof Blob === "function" && bytes instanceof Blob ? bytes : bytes instanceof ArrayBuffer ? bytes : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
   return { v: PROTOCOL_VERSION, type: "inkos-vfs-file", name: String(name).split("/").pop(), mime: mime || "application/octet-stream", data };
 }
 
@@ -37,7 +48,7 @@ export function fileMessage(name, mime, bytes) {
 export function send(frameWindow, origin, msg) {
   if (!validate(msg)) throw new Error(`protocol: invalid message ${msg?.type}`);
   if (!origin || origin === "*" || origin === "null") throw new Error("protocol: explicit target origin required");
-  const transfer = msg.type === "inkos-vfs-file" ? [msg.data] : [];
+  const transfer = msg.type === "inkos-vfs-file" && msg.data instanceof ArrayBuffer ? [msg.data] : [];
   frameWindow.postMessage(msg, origin, transfer);
 }
 

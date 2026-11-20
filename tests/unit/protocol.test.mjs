@@ -18,6 +18,16 @@ test("validate rejects unknown types, wrong version, bad payloads", () => {
   assert.equal(validate(null), null);
 });
 
+test("inkos-vfs-file: a Blob is sent by reference, not transferred", () => {
+  const blob = new Blob([new Uint8Array(4)]);
+  const m = fileMessage("big.msi", "", blob);
+  assert.ok(validate(m));
+  assert.equal(m.data, blob);
+  const calls = [];
+  send({ postMessage: (...a) => calls.push(a) }, "https://hub.inkdos.workers.dev", m);
+  assert.deepEqual(calls[0][2], []);
+});
+
 test("send refuses wildcard origin and transfers file buffers", () => {
   const calls = [];
   const win = { postMessage: (...a) => calls.push(a) };
@@ -40,4 +50,28 @@ test("listen drops messages from non-allowlisted origins", () => {
   stop();
   t.dispatchEvent(ev("https://hub.inkdos.workers.dev", { v: 1, type: "inkos-ready" }));
   assert.deepEqual(got, ["inkos-ready"]);
+});
+
+test("inkos-title: a short title is valid, empty or long is dropped", () => {
+  assert.ok(validate({ v: 1, type: "inkos-title", title: "winemine" }));
+  assert.equal(validate({ v: 1, type: "inkos-title", title: "" }), null);
+  assert.equal(validate({ v: 1, type: "inkos-title", title: "x".repeat(129) }), null);
+  assert.equal(validate({ v: 1, type: "inkos-title" }), null);
+});
+
+test("inkos-size: whole pixel sizes up to 4096", () => {
+  assert.ok(validate({ v: 1, type: "inkos-size", width: 240, height: 180 }));
+  assert.equal(validate({ v: 1, type: "inkos-size", width: 0, height: 180 }), null);
+  assert.equal(validate({ v: 1, type: "inkos-size", width: 240.5, height: 180 }), null);
+  assert.equal(validate({ v: 1, type: "inkos-size", width: 5000, height: 180 }), null);
+  assert.equal(validate({ v: 1, type: "inkos-size", width: "240", height: 180 }), null);
+});
+
+test("inksoc-programs: Windows paths to .exe only", () => {
+  const ok = { v: 1, type: "inksoc-programs", programs: [{ name: "7-Zip File Manager", path: "C:\\Program Files\\7-Zip\\7zFM.exe" }] };
+  assert.ok(validate(ok));
+  assert.ok(validate({ v: 1, type: "inksoc-programs", programs: [] }));
+  assert.equal(validate({ v: 1, type: "inksoc-programs", programs: [{ name: "x", path: "https://evil/x.exe" }] }), null);
+  assert.equal(validate({ v: 1, type: "inksoc-programs", programs: [{ name: "x", path: "C:\\a\"b.exe" }] }), null);
+  assert.equal(validate({ v: 1, type: "inksoc-programs", programs: [{ name: "", path: "C:\\a.exe" }] }), null);
 });

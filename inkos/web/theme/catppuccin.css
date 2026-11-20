@@ -370,6 +370,77 @@ html, body {
   border-color: var(--accent);
 }
 
+/* Apps grid (Launchpad / Start menu): icon tile with the name below, in sections */
+#app-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 2px 8px;
+}
+.app-section {
+  margin: 10px 4px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.app-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 6px 4px;
+}
+.app-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.app-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.app-tile:active { background: var(--accent-soft); }
+@media (hover: hover) {
+  .app-tile:hover { background: var(--surface); }
+}
+.app-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  overflow: hidden;
+  flex: none;
+}
+.app-icon img { width: 100%; height: 100%; object-fit: cover; }
+.app-name {
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+.app-empty {
+  grid-column: 1 / -1;
+  margin: 2px 4px 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
 /* Barra de modificadores */
 .modifier-bar {
   position: fixed;
@@ -480,6 +551,57 @@ html, body {
 .dock-item.focused {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+/* macOS-like dock: icons only, the name in a bubble above, a bounce when an app starts */
+.dock-item span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.dock-item { min-width: 48px; width: 48px; padding: 0; border-radius: 13px; }
+.dock-item svg { width: 26px; height: 26px; }
+@media (hover: hover) {
+  .dock-item[data-label]:hover::before {
+    content: attr(data-label);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--panel-solid, var(--panel));
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+  }
+}
+.dock-item.bounce { animation: dock-bounce .65s ease; }
+@keyframes dock-bounce {
+  0%, 100% { translate: 0 0; }
+  30% { translate: 0 -14px; }
+  55% { translate: 0 0; }
+  75% { translate: 0 -6px; }
+}
+/* magnification (mouse only): size follows --mag, the dock grows upwards */
+.dock-magnify .dock { overflow: visible; align-items: flex-end; height: 62px; padding-bottom: 6px; }
+.dock-magnify .dock-item {
+  --mag: 1;
+  width: calc(48px * var(--mag));
+  min-width: calc(48px * var(--mag));
+  height: calc(48px * var(--mag));
+  transition: width .09s ease-out, min-width .09s ease-out, height .09s ease-out, background .14s ease;
+}
+.dock-magnify .dock-item svg { width: calc(26px * var(--mag)); height: calc(26px * var(--mag)); }
+@media (hover: hover) {
+  .dock-magnify .dock-item:hover { transform: none; }
 }
 
 .dock-sep {

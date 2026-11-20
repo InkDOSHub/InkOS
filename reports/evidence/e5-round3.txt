@@ -1,0 +1,9 @@
+rodada 3 (2026-11-20), Chromium headless, combo local (dist InkOS + Hub assets + InkSoC + InkShell, mesma origem)
+- E2E boot.test.mjs chromium: 13/13. unit: 17/17.
+- InkOS ?open=cmdexe: janela CMD/EXE, cmd.exe "ver" -> Microsoft Windows 10.0.19045; título janela = "Command Prompt".
+- winemine.exe do VFS -> janela frame-cmdexe-1, canvas, título "winemine", zoom na janela.
+- Terminal (dock) -> InkShell ?inkos=1, auto-start, sem header, "New UNIX username:".
+- InkShell motor c743c20: tests/linux-test.mjs 23/23.
+- prod InkShell antes (motor 0c69064): wget http://example.com WGET=0 via wisp público.
+- relay Hub /net/wisp/: dl-cdn.alpinelinux.org:80 HTTP 200; example.com fecha (Worker não alcança host Cloudflare) -> relay só fallback.
+- WebKit: BLOQUEADO (B2), Safari só no aparelho.

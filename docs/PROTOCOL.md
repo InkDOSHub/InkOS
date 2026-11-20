@@ -58,6 +58,40 @@ Hub pages that include `assets/tema.js` re-dispatch it as a DOM event:
 
 Optional. Lets InkOS resend the theme once the app's listeners are attached.
 
+### `inkos-title` (app → InkOS)
+
+```js
+{ v: 1, type: "inkos-title", title: "winemine" }
+```
+
+Optional. InkOS puts `title` (1–128 characters) in the app window's title bar.
+The InkSoC engine page sends the name of the program in front.
+
+### `inkos-size` (app → InkOS)
+
+```js
+{ v: 1, type: "inkos-size", width: 420, height: 310 }
+```
+
+Optional. The size in CSS pixels of what the app wants to show (whole numbers, 1–4096).
+InkOS sizes the window around it (up to 1.5×, never larger than the desktop, centred
+where it was). A window the user has resized or maximized keeps its size. The InkSoC
+engine page sends the box around the program's windows, so the InkOS window follows a
+Windows program's window.
+
+## Engine windows (InkSoC, InkShell)
+
+`appload.registerFrameApp(id, { path, title, multi })` opens a Hub page as an InkOS
+app (path relative to the Hub base, the registry's host):
+
+| InkOS app | Page | Notes |
+|---|---|---|
+| `shell` (Terminal) | `InkShell/?inkos=1` | Alpine Linux on the InkSoC engine; starts at once, no page header |
+| `cmdexe` (CMD/EXE) | `InkSoC/?inkos=1` | Command Prompt (cmd.exe); with a file, `&file=1` and a window per program |
+
+A file for these apps is sent with `inkos-vfs-file` after the page says `inkos-ready`.
+`?open=<app id>` on the InkOS address opens that app on start (the Hub's InkSoC link uses `?open=cmdexe`).
+
 ## Versioning
 
 A breaking change bumps `v`. Receivers ignore versions they do not know.
