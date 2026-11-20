@@ -1,9 +1,0 @@
-app-window { display:block;position:absolute;z-index:4; }
-.app-launcher { z-index:30; }
-.app-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px; }
-.app-tile { min-height:84px;display:grid;place-items:center;gap:7px;background:var(--surface0);border:1px solid var(--surface1);border-radius:12px; }
-.app-tile svg { width:26px;height:26px;fill:none;stroke:var(--mauve);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round; }
-.app-close { position:absolute;z-index:31;right:4%;top:4%; }
-[data-suspended="true"]:after { content:"Session suspended";position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--crust);color:var(--text);font:1.2rem system-ui; }
-[data-app-root] { min-height:100vh;padding:20px;background:var(--base);color:var(--text);font-family:system-ui,sans-serif; }
-[data-app-root] header { display:flex;gap:12px;align-items:center; } [data-app-root] svg { width:28px;height:28px;stroke:var(--mauve);fill:none;stroke-width:2; }

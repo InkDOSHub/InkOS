@@ -1,0 +1,45 @@
+{
+ "schema": "inkbench/1",
+ "mode": "host",
+ "label": "PROXY: wasm (Node/V8) vs native on the same host, not an iOS device result",
+ "host": {
+  "platform": "linux",
+  "arch": "x64",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "node": "v22.23.5"
+ },
+ "date": "2026-11-20T08:41:51.413Z",
+ "kernels": {
+  "cpu.int": {
+   "native_ms": 92.135,
+   "wasm_ms": 97.348,
+   "ratio": 0.946
+  },
+  "cpu.float": {
+   "native_ms": 38.014,
+   "wasm_ms": 53.433,
+   "ratio": 0.711
+  },
+  "cpu.sha256": {
+   "native_ms": 184.827,
+   "wasm_ms": 158.565,
+   "ratio": 1.166
+  },
+  "cpu.matmul": {
+   "native_ms": 4.447,
+   "wasm_ms": 14.419,
+   "ratio": 0.308
+  },
+  "mem.copy": {
+   "native_ms": 88.62,
+   "wasm_ms": 60.167,
+   "ratio": 1.473
+  },
+  "mem.alloc": {
+   "native_ms": 6.208,
+   "wasm_ms": 6.253,
+   "ratio": 0.993
+  }
+ },
+ "geomean_ratio": 0.841
+}

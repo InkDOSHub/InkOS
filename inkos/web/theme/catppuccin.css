@@ -609,3 +609,5 @@ html, body { overscroll-behavior: none; }
      modifier bar never covers the focused field. */
   .mods-open .desktop { bottom: calc(132px + var(--kb-inset, 0px)); }
 }
+/* Hub mode (prepared seam, see docs/adr/ADR-modo-hub-desktop.md) */
+[data-mode="hub"] #ws-toggle { display: none; }

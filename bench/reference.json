@@ -1,0 +1,7 @@
+{
+ "$comment": "Native reference timings (ms) measured by the operator ON THE SAME DEVICE with the same kernels and parameters (bench/kernels). Leave empty until measured; never estimate.",
+ "devices": {
+  "iphone-17-pro-max": { "kernels": {} },
+  "ipad-11-a16": { "kernels": {} }
+ }
+}

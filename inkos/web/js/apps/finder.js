@@ -179,21 +179,21 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
       return;
     }
     if (selected.name.toLowerCase().endsWith(".pdf")) {
-      await vfs.serveToHubApp(selected.path, "pdf", (id) => openApp(id));
+      await vfs.serveToHubApp(selected.path, "pdf", (id, file) => openApp(id, undefined, { file }));
       return;
     }
     if (/\.(png|jpg|jpeg|webp|gif)$/i.test(selected.name)) {
-      await vfs.serveToHubApp(selected.path, "foto", (id) => openApp(id));
+      await vfs.serveToHubApp(selected.path, "foto", (id, file) => openApp(id, undefined, { file }));
       return;
     }
-    await vfs.serveToHubApp(selected.path, "texto", (id) => openApp(id));
+    await vfs.serveToHubApp(selected.path, "texto", (id, file) => openApp(id, undefined, { file }));
   };
 
   btnSendHub.onclick = async () => {
     if (!selected || selected.type !== "file") return;
     const appId = prompt("ID do app no Hub (ex.: texto, pdf, foto, codigo, zip, quadro):", "texto");
     if (!appId) return;
-    await vfs.serveToHubApp(selected.path, appId.trim(), (id) => openApp(id));
+    await vfs.serveToHubApp(selected.path, appId.trim(), (id, file) => openApp(id, undefined, { file }));
   };
 
   btnDl.onclick = () => selected && vfs.download(selected.path);

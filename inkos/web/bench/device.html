@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="mocha">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>InkBench device run</title>
+<link rel="stylesheet" href="../theme/catppuccin.css">
+<style>
+  body { overflow: auto; padding: 16px max(16px, env(safe-area-inset-left)); font-size: 14px; }
+  table { border-collapse: collapse; margin: 12px 0; }
+  td, th { border: 1px solid var(--border); padding: 6px 10px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  button, select { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
+  pre { white-space: pre-wrap; background: var(--surface); padding: 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<h1>InkBench: execução no dispositivo</h1>
+<p>Roda os mesmos kernels de <code>bench/kernels</code> em WebAssembly e exporta JSON. O veredito ≥ 70 % só é calculado contra uma referência <b>nativa medida no mesmo aparelho</b> (<code>bench/reference.json</code>, preenchida pelo operador).</p>
+<p>
+  <label>Aparelho <select id="device">
+    <option value="iphone-17-pro-max">iPhone 17 Pro Max</option>
+    <option value="ipad-11-a16">iPad 11" (A16)</option>
+    <option value="other">Outro</option>
+  </select></label>
+  <button id="run" type="button">Rodar</button>
+  <button id="save" type="button" disabled>Exportar JSON</button>
+</p>
+<div id="status">Pronto.</div>
+<table id="out" hidden><thead><tr><th>kernel</th><th>ms (melhor de 3)</th></tr></thead><tbody></tbody></table>
+<pre id="json" hidden></pre>
+<script type="module">
+import { runWasm } from "./kernels.mjs";
+const $ = (s) => document.querySelector(s);
+let result = null;
+
+async function opfsKernel() {
+  if (!navigator.storage?.getDirectory) return null;
+  const root = await navigator.storage.getDirectory();
+  const fh = await root.getFileHandle("inkbench.tmp", { create: true });
+  const data = new Uint8Array(8 << 20).fill(7);
+  const t = performance.now();
+  const w = await fh.createWritable();
+  await w.write(data);
+  await w.close();
+  const back = new Uint8Array(await (await fh.getFile()).arrayBuffer());
+  const ms = performance.now() - t;
+  await root.removeEntry("inkbench.tmp");
+  return back.length === data.length ? +ms.toFixed(3) : null;
+}
+
+$("#run").onclick = async () => {
+  $("#run").disabled = true;
+  $("#status").textContent = "Rodando… (não troque de aba)";
+  try {
+    const bytes = await (await fetch("./inkbench_kernels.wasm")).arrayBuffer();
+    const kernels = await runWasm(bytes);
+    try { const v = await opfsKernel(); if (v != null) kernels["vfs.opfs_rw_8mib"] = v; } catch (_) {}
+    result = {
+      schema: "inkbench/1", mode: "device", device: $("#device").value,
+      ua: navigator.userAgent, isolated: self.crossOriginIsolated, date: new Date().toISOString(), kernels,
+    };
+    const tb = $("#out tbody");
+    tb.innerHTML = "";
+    for (const [k, ms] of Object.entries(kernels)) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td></td><td></td>`;
+      tr.children[0].textContent = k;
+      tr.children[1].textContent = ms;
+      tb.append(tr);
+    }
+    $("#out").hidden = false;
+    $("#json").hidden = false;
+    $("#json").textContent = JSON.stringify(result, null, 1);
+    $("#save").disabled = false;
+    $("#status").textContent = "Pronto. Exporte o JSON e compare com: node bench/compare.mjs <arquivo>.json";
+  } catch (e) {
+    $("#status").textContent = `Erro: ${e.message}`;
+  } finally {
+    $("#run").disabled = false;
+  }
+};
+$("#save").onclick = () => {
+  const blob = new Blob([JSON.stringify(result, null, 1)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `inkbench-${result.device}-${result.date.slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+};
+</script>
+</body>
+</html>

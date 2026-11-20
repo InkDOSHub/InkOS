@@ -260,6 +260,47 @@ for (const name of wanted) {
     await ctx.close();
   });
 
+  test(`${name}: InkBench device page runs and exports JSON`, { timeout: 120_000 }, async (t) => {
+    const b = browsers[name];
+    if (!b) return t.skip();
+    const ctx = await b.newContext();
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(new URL("bench/device.html", baseURL).href);
+    await page.click("#run");
+    await page.waitForFunction(() => !document.querySelector("#json").hidden, null, { timeout: 110_000 });
+    const r = JSON.parse(await page.locator("#json").innerText());
+    assert.equal(r.schema, "inkbench/1");
+    for (const k of ["cpu.int", "cpu.float", "cpu.sha256", "cpu.matmul", "mem.copy", "mem.alloc"]) assert.ok(r.kernels[k] > 0, k);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
+  test(`${name}: Hub registry by reference, app iframe follows theme`, { timeout: 90_000 }, async (t) => {
+    const b = browsers[name];
+    if (!b) return t.skip();
+    const { ctx, page, errors } = await bootPage(b, { theme: "latte" });
+    await page.click("#top-apps-btn");
+    await page.waitForSelector("#app-grid .app-tile[data-app-id='foto']", { timeout: 20000 });
+    const kinds = await page.$$eval("#app-grid .app-tile small", (els) => els.map((e) => e.textContent));
+    const hub = kinds.filter((k) => k.startsWith("Hub")).length;
+    assert.ok(hub >= 25, `hub apps in launcher: ${hub}`);
+    if (!kinds.includes("Hub")) return t.skip("Hub offline: snapshot used");
+    assert.equal(await page.locator(".window iframe").count(), 0, "no iframe before opening (lazy)");
+    await page.click("#app-grid .app-tile[data-app-id='foto']");
+    const fr = page.locator('.window[data-win-id="hub-foto"] iframe');
+    await fr.waitFor();
+    assert.equal(await fr.getAttribute("data-hub-origin"), "https://hub.inkdos.workers.dev");
+    const frame = await (await fr.elementHandle()).contentFrame();
+    await frame.waitForLoadState("load");
+    await frame.waitForFunction(() => document.documentElement.dataset.theme === "light", null, { timeout: 15000 });
+    await page.click("#theme-toggle");
+    await frame.waitForFunction(() => document.documentElement.dataset.theme === "dark", null, { timeout: 15000 });
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
   test(`${name}: themes Latte/Mocha + screenshots`, async (t) => {
     const b = browsers[name];
     if (!b) return t.skip();

@@ -78,6 +78,11 @@ fi
 "$ROOT/scripts/verify-wasm.sh" "$WASM"
 
 cp -a inkos/web/. dist/
+
+# InkBench kernels (same code as the native host runner) for bench/device.html.
+cargo build -q --release --lib --target wasm32-unknown-unknown --manifest-path bench/kernels/Cargo.toml
+cp bench/kernels/target/wasm32-unknown-unknown/release/inkbench_kernels.wasm dist/bench/
+"$ROOT/scripts/verify-wasm.sh" dist/bench/inkbench_kernels.wasm
 [[ -f dist/_headers ]] || { echo "dist/_headers missing" >&2; exit 1; }
 grep -q '^  Cross-Origin-Opener-Policy: same-origin$' dist/_headers
 grep -q '^  Cross-Origin-Embedder-Policy: require-corp$' dist/_headers

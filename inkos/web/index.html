@@ -199,6 +199,7 @@
           vfs,
           wm,
           closeApp: (id) => appload.closeApp(id),
+          openApp: (id, desk, c) => appload.openApp(id, desk || desktopEl, c),
           syncTheme: appload.syncTheme,
         });
       } catch (e) {
@@ -283,6 +284,8 @@
       if (settingsMod?.savePrefs) settingsMod.savePrefs({ theme: next });
       appload.syncTheme();
     });
+
+    import("./js/mode.js").then((m) => m.applyLayoutMode(m.currentMode(), { openLauncher: () => toggleLauncher(false) }));
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./sw.js").catch((e) => console.warn("[InkOS] sw register:", e));

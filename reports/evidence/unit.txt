@@ -1,0 +1,16 @@
+✔ round-trip (multi-chunk, exact multiple, empty) (1005.825032ms)
+✔ header: version, kdf, iterations >= 600k, unique IV prefix and salt (248.163588ms)
+✔ wrong password is indistinguishable from corruption (191.0463ms)
+✔ 1-bit tamper anywhere after header fails (652.885648ms)
+✔ truncation (drop final record) and trailing bytes fail (368.481608ms)
+✔ chunk reordering fails (191.458741ms)
+✔ unsupported version is rejected clearly (94.288915ms)
+✔ session payload round-trip (manifest + files) (307.337139ms)
+# 210 MiB: ciphertext 220205228 B; encrypt peak 216.2 MiB (incl. ciphertext held for Blob); decrypt working set 0.0 MiB over blob
+✔ >200 MB round-trip with bounded memory (1048.021678ms)
+✔ theme message maps flavors to the Hub's light/dark (1.644335ms)
+✔ validate rejects unknown types, wrong version, bad payloads (0.351126ms)
+✔ send refuses wildcard origin and transfers file buffers (0.478214ms)
+✔ listen drops messages from non-allowlisted origins (0.246003ms)
+ℹ pass 13
+ℹ fail 0
