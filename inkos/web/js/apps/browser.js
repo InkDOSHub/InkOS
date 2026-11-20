@@ -55,15 +55,62 @@ export function mountBrowser(root, { vfs }, initialCtx = {}) {
     }
 
     const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-    stage.innerHTML = `
-      <div style="display:flex;flex-direction:column;height:100%;">
-        <div style="padding:6px 12px;font-size:11.5px;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:8px;">
-          <span>Nota: alguns sites bloqueiam exibição em iframe (X-Frame-Options / CSP).</span>
-          <a href="${normalized}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);">Abrir fora do iframe</a>
-        </div>
-        <iframe src="${normalized}" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" style="flex:1;width:100%;height:100%;border:0;background:#fff;"></iframe>
-      </div>
-    `;
+    let url;
+    try {
+      url = new URL(normalized);
+    } catch (_) {
+      stage.textContent = "Endereço inválido.";
+      return;
+    }
+    stage.replaceChildren(pageView(url));
+  };
+
+  // InkOS runs cross-origin isolated (COEP require-corp) for SharedArrayBuffer.
+  // A page from another site can only be shown in a "credentialless" iframe
+  // (Chromium); Safari has no such iframe, so there the page opens in a tab.
+  // Sites that forbid framing (X-Frame-Options / CSP frame-ancestors) never
+  // show inside any iframe.
+  const canFrame = (url) =>
+    url.origin === location.origin ||
+    !self.crossOriginIsolated ||
+    "credentialless" in HTMLIFrameElement.prototype;
+
+  const pageView = (url) => {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;flex-direction:column;height:100%;";
+    const bar = document.createElement("div");
+    bar.style.cssText = "padding:6px 12px;font-size:11.5px;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;";
+    const note = document.createElement("span");
+    const tab = document.createElement("a");
+    tab.href = url.href;
+    tab.target = "_blank";
+    tab.rel = "noopener noreferrer";
+    tab.className = "top-pill active";
+    tab.textContent = "Abrir em nova aba";
+    bar.append(note, tab);
+    wrap.append(bar);
+    if (!canFrame(url)) {
+      note.textContent = "Este navegador não mostra sites externos dentro do InkOS (isolamento de origem). Use a nova aba.";
+      const card = document.createElement("div");
+      card.style.cssText = "flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;color:var(--muted);";
+      const host = document.createElement("strong");
+      host.style.cssText = "color:var(--text);font-size:15px;";
+      host.textContent = url.host;
+      const big = tab.cloneNode(true);
+      big.style.cssText = "font-size:14px;padding:10px 18px;";
+      card.append(host, big);
+      wrap.append(card);
+      return wrap;
+    }
+    note.textContent = "Se a página ficar em branco, o site não permite ser exibido dentro de outra página.";
+    const fr = document.createElement("iframe");
+    fr.setAttribute("credentialless", "");
+    fr.referrerPolicy = "no-referrer";
+    fr.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups");
+    fr.style.cssText = "flex:1;width:100%;height:100%;border:0;background:#fff;";
+    fr.src = url.href;
+    wrap.append(fr);
+    return wrap;
   };
 
   const navigate = async (rawUrl, push = true) => {

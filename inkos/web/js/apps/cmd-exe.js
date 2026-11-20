@@ -73,6 +73,17 @@ export function mountCmdExe(root, { vfs, openApp }, initialCtx = {}) {
     log(`[SETUP] Instalando '${fileName}' em C:\\InkOS\\Programs\\${baseName}...`);
     log(`[SETUP] Assinatura PE/MZ: ${isMZ ? "SIM (executável Windows/PE)" : "NÃO (pacote/script/manifesto)"}`);
     log(`[SETUP] Concluído. Use 'run ${baseName}' ou abra no Finder (/Programs/${baseName}).`);
+    if (isMZ) await runInWine(storedExe, fileName);
+  };
+
+  // Windows programs run in the InkSoC desktop (Wine) inside its own window.
+  const runInWine = async (vfsPath, label) => {
+    log(`[EXEC] Abrindo ${label} no InkSoC (Wine)…`);
+    try {
+      await vfs.serveToHubApp(vfsPath, "wine", (id, file) => openApp(id, undefined, { file }));
+    } catch (e) {
+      log(`[EXEC] Falha ao abrir no InkSoC: ${e?.message || e}`);
+    }
   };
 
   const installFromVfsPath = async (vfsPath) => {
@@ -127,8 +138,7 @@ export function mountCmdExe(root, { vfs, openApp }, initialCtx = {}) {
       }
       log(`[EXEC] Iniciando ${pkg.name} (${pkg.size} bytes)...`);
       if (pkg.isMZ) {
-        log("[EXEC] Binário PE/MZ detectado; encaminhando para o ambiente de compatibilidade...");
-        try { await openApp("wine"); } catch (_) {}
+        await runInWine(pkg.exePath, pkg.fileName);
       } else {
         log("[EXEC] Pacote/script registrado em C:\\InkOS\\Programs\\" + pkg.name);
       }

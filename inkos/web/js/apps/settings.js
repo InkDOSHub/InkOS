@@ -4,7 +4,7 @@ const STORAGE_KEY = "inkos-prefs-v1";
 export const WALLPAPERS = [
   {
     id: "cosmic-dusk",
-    name: "COSMIC Dusk",
+    name: "InkOS Dusk",
     css: "radial-gradient(circle at 18% 18%, #262238 0%, transparent 52%), radial-gradient(circle at 82% 82%, #132235 0%, transparent 58%), #101016",
   },
   {
@@ -35,7 +35,7 @@ export const WALLPAPERS = [
 ];
 
 const ACCENTS = [
-  { name: "COSMIC Peach", value: "#e5a373" },
+  { name: "InkOS Peach", value: "#e5a373" },
   { name: "macOS Blue", value: "#3b82f6" },
   { name: "Mauve", value: "#cba6f7" },
   { name: "Emerald", value: "#a6e3a1" },

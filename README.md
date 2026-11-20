@@ -1,6 +1,6 @@
 # InkOS
 
-Sistema operacional web experimental em **Rust / WebAssembly** com interface desktop inspirada no **macOS** e **COSMIC / MocaccinoOS**, integrado aos aplicativos do **InkDOS Hub**.
+Sistema operacional web experimental em **Rust / WebAssembly** com interface desktop (**InkOS Desktop**), integrado aos aplicativos do **InkDOS Hub**.
 
 🔗 **Acesse online:** [https://inkos-5k7.pages.dev](https://inkos-5k7.pages.dev)
 

@@ -205,8 +205,9 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
       }
       return;
     }
-    if (selected.name.toLowerCase().endsWith(".exe")) {
-      await openApp("cmdexe", undefined, { exePath: selected.path });
+    // Windows programs run in the InkSoC desktop (Wine), drawn in its window.
+    if (/\.(exe|msi|lnk)$/i.test(selected.name)) {
+      await vfs.serveToHubApp(selected.path, "wine", (id, file) => openApp(id, undefined, { file }));
       return;
     }
     if (selected.name.toLowerCase().endsWith(".pdf")) {
