@@ -553,6 +553,57 @@ html, body {
   background: var(--accent-soft);
 }
 
+/* macOS-like dock: icons only, the name in a bubble above, a bounce when an app starts */
+.dock-item span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.dock-item { min-width: 48px; width: 48px; padding: 0; border-radius: 13px; }
+.dock-item svg { width: 26px; height: 26px; }
+@media (hover: hover) {
+  .dock-item[data-label]:hover::before {
+    content: attr(data-label);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--panel-solid, var(--panel));
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+  }
+}
+.dock-item.bounce { animation: dock-bounce .65s ease; }
+@keyframes dock-bounce {
+  0%, 100% { translate: 0 0; }
+  30% { translate: 0 -14px; }
+  55% { translate: 0 0; }
+  75% { translate: 0 -6px; }
+}
+/* magnification (mouse only): size follows --mag, the dock grows upwards */
+.dock-magnify .dock { overflow: visible; align-items: flex-end; height: 62px; padding-bottom: 6px; }
+.dock-magnify .dock-item {
+  --mag: 1;
+  width: calc(48px * var(--mag));
+  min-width: calc(48px * var(--mag));
+  height: calc(48px * var(--mag));
+  transition: width .09s ease-out, min-width .09s ease-out, height .09s ease-out, background .14s ease;
+}
+.dock-magnify .dock-item svg { width: calc(26px * var(--mag)); height: calc(26px * var(--mag)); }
+@media (hover: hover) {
+  .dock-magnify .dock-item:hover { transform: none; }
+}
+
 .dock-sep {
   width: 1px;
   height: 28px;

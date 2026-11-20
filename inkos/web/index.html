@@ -117,6 +117,33 @@
     }
 
     let wm;
+    // macOS dock magnification: with a mouse, icons near the pointer grow (cosine falloff over
+    // ~2.5 icons), pushing their neighbours aside; touch screens keep the plain dock.
+    let dockMagnify = null;
+    if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      const BASE = 48, MAX = 1.85, RANGE = 150;
+      let mx = null, raf = 0;
+      dockMagnify = () => {
+        raf = 0;
+        for (const it of dockEl.querySelectorAll(".dock-item")) {
+          let k = 1;
+          if (mx !== null) {
+            const r = it.getBoundingClientRect();
+            const d = Math.abs(mx - (r.left + r.width / 2));
+            if (d < RANGE) k = 1 + (MAX - 1) * Math.cos((d / RANGE) * (Math.PI / 2));
+          }
+          it.style.setProperty("--mag", k.toFixed(3));
+        }
+      };
+      document.documentElement.classList.add("dock-magnify");
+      dockEl.addEventListener("pointermove", (e) => {
+        if (e.pointerType !== "mouse") return;
+        mx = e.clientX;
+        raf ||= requestAnimationFrame(dockMagnify);
+      });
+      dockEl.addEventListener("pointerleave", () => { mx = null; raf ||= requestAnimationFrame(dockMagnify); });
+      void BASE;
+    }
     const renderDock = (wins = []) => {
       dockEl.innerHTML = "";
       const pinned = [
@@ -136,11 +163,15 @@
         if (runningMatch) b.classList.add("running");
         if (runningMatch?.focused) b.classList.add("focused");
         if (runningMatch) b.dataset.winId = runningMatch.id;
-        b.innerHTML = `${svgIcon(p.iconId, 20)}<span>${p.label}</span>`;
+        b.dataset.label = p.label;
+        b.setAttribute("aria-label", p.label);
+        b.innerHTML = `${svgIcon(p.iconId, 26)}<span>${p.label}</span>`;
         b.onclick = () => {
           if (runningMatch && runningMatch.focused && !runningMatch.minimized) {
             wm.minimize(runningMatch.id);
           } else {
+            // macOS: an app that starts bounces once
+            if (!runningMatch) { b.classList.add("bounce"); setTimeout(() => b.classList.remove("bounce"), 700); }
             p.action();
           }
         };
@@ -156,10 +187,12 @@
           const b = document.createElement("button");
           b.type = "button";
           b.className = `dock-item running ${w.focused ? "focused" : ""}`;
-          b.title = w.title;
           b.dataset.winId = w.id;
+          b.dataset.label = w.title;
+          b.setAttribute("aria-label", w.title);
           const shortTitle = w.title.length > 12 ? w.title.slice(0, 11) + "…" : w.title;
-          b.innerHTML = `${svgIcon("i-window", 18)}<span>${shortTitle}</span>`;
+          const icon = /^native-vfs-shell$/.test(w.id) ? "i-terminal" : /^frame-cmdexe-/.test(w.id) ? "i-exe" : "i-window";
+          b.innerHTML = `${svgIcon(icon, 26)}<span>${shortTitle}</span>`;
           b.onclick = () => {
             if (w.focused && !w.minimized) wm.minimize(w.id);
             else wm.focus(w.id);
@@ -168,6 +201,7 @@
         }
       }
 
+      dockMagnify?.();
       const active = wins.find((w) => w.focused && !w.minimized);
       const activeEl = document.querySelector("#active-app");
       if (activeEl) activeEl.textContent = active ? active.title.split(" — ")[0] : "";
