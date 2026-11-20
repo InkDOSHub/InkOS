@@ -1,0 +1,167 @@
+TAP version 13
+# \# skip webkit: browserType.launch: Executable doesn't exist at /opt/pw-browsers/webkit-2359/pw_run.sh
+# Subtest: chromium: boot without errors, isolated, wasm loaded
+ok 1 - chromium: boot without errors, isolated, wasm loaded
+  ---
+  duration_ms: 254.288324
+  type: 'test'
+  ...
+# Subtest: chromium: icons, dock, native apps mount
+ok 2 - chromium: icons, dock, native apps mount
+  ---
+  duration_ms: 2278.870687
+  type: 'test'
+  ...
+# Subtest: chromium: window drag, 8-way resize, minimize, maximize, close
+ok 3 - chromium: window drag, 8-way resize, minimize, maximize, close
+  ---
+  duration_ms: 1410.212811
+  type: 'test'
+  ...
+# Subtest: chromium: workspaces isolate windows
+ok 4 - chromium: workspaces isolate windows
+  ---
+  duration_ms: 364.080928
+  type: 'test'
+  ...
+# Subtest: chromium: shell, cmd, finder, browser vfs://
+ok 5 - chromium: shell, cmd, finder, browser vfs://
+  ---
+  duration_ms: 3056.057469
+  type: 'test'
+  ...
+# Subtest: chromium: .inkos freeze / wake through Shell
+ok 6 - chromium: .inkos freeze / wake through Shell
+  ---
+  duration_ms: 10182.813197
+  type: 'test'
+  ...
+# Subtest: chromium: OPFS swap integrity under forced eviction
+ok 7 - chromium: OPFS swap integrity under forced eviction
+  ---
+  duration_ms: 451.473056
+  type: 'test'
+  ...
+# Subtest: chromium: InkBench device page runs and exports JSON
+ok 8 - chromium: InkBench device page runs and exports JSON
+  ---
+  duration_ms: 2883.017196
+  type: 'test'
+  ...
+# Subtest: chromium: Hub registry by reference, app iframe follows theme
+ok 9 - chromium: Hub registry by reference, app iframe follows theme
+  ---
+  duration_ms: 1840.02203
+  type: 'test'
+  ...
+# Subtest: chromium: themes Latte/Mocha + screenshots
+ok 10 - chromium: themes Latte/Mocha + screenshots
+  ---
+  duration_ms: 1219.721755
+  type: 'test'
+  ...
+# Subtest: chromium: offline reload keeps isolation (service worker)
+ok 11 - chromium: offline reload keeps isolation (service worker)
+  ---
+  duration_ms: 357.418932
+  type: 'test'
+  ...
+# Subtest: chromium: mobile emulation (iPhone / iPad) layout
+ok 12 - chromium: mobile emulation (iPhone / iPad) layout
+  ---
+  duration_ms: 1641.726019
+  type: 'test'
+  ...
+# Subtest: webkit: boot without errors, isolated, wasm loaded
+ok 13 - webkit: boot without errors, isolated, wasm loaded # SKIP webkit not installed
+  ---
+  duration_ms: 0.210096
+  type: 'test'
+  ...
+# Subtest: webkit: icons, dock, native apps mount
+ok 14 - webkit: icons, dock, native apps mount # SKIP
+  ---
+  duration_ms: 0.051304
+  type: 'test'
+  ...
+# Subtest: webkit: window drag, 8-way resize, minimize, maximize, close
+ok 15 - webkit: window drag, 8-way resize, minimize, maximize, close # SKIP
+  ---
+  duration_ms: 0.052959
+  type: 'test'
+  ...
+# Subtest: webkit: workspaces isolate windows
+ok 16 - webkit: workspaces isolate windows # SKIP
+  ---
+  duration_ms: 0.04156
+  type: 'test'
+  ...
+# Subtest: webkit: shell, cmd, finder, browser vfs://
+ok 17 - webkit: shell, cmd, finder, browser vfs:// # SKIP
+  ---
+  duration_ms: 0.040865
+  type: 'test'
+  ...
+# Subtest: webkit: .inkos freeze / wake through Shell
+ok 18 - webkit: .inkos freeze / wake through Shell # SKIP
+  ---
+  duration_ms: 0.046898
+  type: 'test'
+  ...
+# Subtest: webkit: OPFS swap integrity under forced eviction
+ok 19 - webkit: OPFS swap integrity under forced eviction # SKIP
+  ---
+  duration_ms: 0.041086
+  type: 'test'
+  ...
+# Subtest: webkit: InkBench device page runs and exports JSON
+ok 20 - webkit: InkBench device page runs and exports JSON # SKIP
+  ---
+  duration_ms: 0.05948
+  type: 'test'
+  ...
+# Subtest: webkit: Hub registry by reference, app iframe follows theme
+ok 21 - webkit: Hub registry by reference, app iframe follows theme # SKIP
+  ---
+  duration_ms: 0.044049
+  type: 'test'
+  ...
+# Subtest: webkit: themes Latte/Mocha + screenshots
+ok 22 - webkit: themes Latte/Mocha + screenshots # SKIP
+  ---
+  duration_ms: 0.046716
+  type: 'test'
+  ...
+# Subtest: webkit: offline reload keeps isolation (service worker)
+ok 23 - webkit: offline reload keeps isolation (service worker) # SKIP
+  ---
+  duration_ms: 0.039704
+  type: 'test'
+  ...
+# Subtest: webkit: mobile emulation (iPhone / iPad) layout
+ok 24 - webkit: mobile emulation (iPhone / iPad) layout # SKIP
+  ---
+  duration_ms: 0.035075
+  type: 'test'
+  ...
+# Subtest: chromium: context menu by right click, long press and two-finger tap
+ok 25 - chromium: context menu by right click, long press and two-finger tap
+  ---
+  duration_ms: 7304.887146
+  type: 'test'
+  ...
+# Subtest: webkit: context menu by right click, long press and two-finger tap
+ok 26 - webkit: context menu by right click, long press and two-finger tap # SKIP
+  ---
+  duration_ms: 0.13743
+  type: 'test'
+  ...
+1..26
+# tests 26
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 13
+# todo 0
+# duration_ms 33492.948176

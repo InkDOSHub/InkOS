@@ -2,6 +2,8 @@
 const svgIcon = (id, size = 14) =>
   `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
 
+import { setContextMenu } from "./contextmenu.js";
+
 export class WindowManager {
   constructor(desktopEl, { onChange } = {}) {
     this.desktopEl = desktopEl;
@@ -166,6 +168,18 @@ export class WindowManager {
     };
 
     const titlebar = el.querySelector(".window-title");
+    setContextMenu(titlebar, () => [
+      { label: "Minimizar", action: () => this.minimize(id) },
+      { label: record.maximized ? "Restaurar" : "Maximizar", action: () => this.toggleMaximize(id) },
+      "-",
+      ...[1, 2, 3].map((n) => ({
+        label: `Mover para Workspace ${n}`,
+        disabled: record.workspace === n,
+        action: () => this.moveToWorkspace(id, n),
+      })),
+      "-",
+      { label: "Fechar", danger: true, action: () => this.close(id) },
+    ]);
     titlebar.addEventListener("pointerdown", (ev) => {
       if (ev.target.closest("button") || record.maximized) return;
       ev.preventDefault();
@@ -258,6 +272,13 @@ export class WindowManager {
       w.el.classList.toggle("focused", w.focused);
     }
     this._emit();
+  }
+
+  moveToWorkspace(id, ws) {
+    const target = this.windows.get(id);
+    if (!target) return;
+    target.workspace = Number(ws) || 1;
+    this.setWorkspace(this.workspace);
   }
 
   minimize(id) {

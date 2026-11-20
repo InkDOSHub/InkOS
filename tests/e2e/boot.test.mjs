@@ -371,3 +371,77 @@ for (const name of wanted) {
     }
   });
 }
+
+// Long press through real touch events (CDP), as a phone would send them.
+async function longPress(page, x, y, ms = 750) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  await page.waitForTimeout(ms);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
+async function twoFingerTap(page, x, y) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y, id: 1 }, { x: x + 30, y, id: 2 }] });
+  await page.waitForTimeout(80);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
+for (const name of wanted) {
+  test(`${name}: context menu by right click, long press and two-finger tap`, async (t) => {
+    const b = browsers[name];
+    if (!b) return t.skip();
+    // Mouse: right click on a window title bar.
+    {
+      const { ctx, page, errors } = await bootPage(b);
+      await dockClick(page, "Finder");
+      const win = page.locator('.window[data-win-id="native-finder"]');
+      await win.waitFor();
+      await win.locator(".window-title").click({ button: "right", position: { x: 200, y: 10 } });
+      await page.locator(".ctx-menu").waitFor();
+      await page.locator(".ctx-item", { hasText: "Minimizar" }).click();
+      await page.waitForFunction(() => document.querySelector('.window[data-win-id="native-finder"]').style.display === "none");
+      // The next normal click still works (nothing swallowed).
+      await dockClick(page, "Terminal");
+      await page.locator("#sh-in").waitFor();
+      assert.deepEqual(errors, []);
+      await ctx.close();
+    }
+    if (name !== "chromium") return; // CDP touch input is Chromium only
+    for (const dev of ["iPhone 15 Pro Max", "iPad Pro 11"]) {
+      const opts = { ...pw.devices[dev] };
+      delete opts.defaultBrowserType;
+      const ctx = await b.newContext(opts);
+      const { page, errors } = await bootPage(b, { context: ctx });
+      // Long press on the empty desktop opens the desktop menu; tap opens Finder.
+      const desk = await page.locator("#desktop").boundingBox();
+      await longPress(page, desk.x + desk.width / 2, desk.y + desk.height / 2);
+      await page.locator(".ctx-menu").waitFor({ timeout: 3000 });
+      assert.equal(await page.locator(".ctx-menu").count(), 1, `${dev}: one menu only`);
+      await page.waitForTimeout(400);
+      await page.locator(".ctx-item", { hasText: "Finder" }).tap();
+      const win = page.locator('.window[data-win-id="native-finder"]');
+      await win.waitFor();
+      // New folder via the Finder background menu (two-finger tap).
+      const list = await win.locator("#f-list").boundingBox();
+      await twoFingerTap(page, list.x + 20, list.y + list.height - 30);
+      await page.locator(".ctx-item", { hasText: "Nova pasta" }).waitFor({ timeout: 3000 });
+      await page.waitForTimeout(400);
+      await page.locator(".ctx-item", { hasText: "Nova pasta" }).tap();
+      const card = win.locator("#f-list > button", { hasText: "e2e-item" }).first();
+      await card.waitFor();
+      // Long press on the item: menu for that item, rename works.
+      const cb = await card.boundingBox();
+      await longPress(page, cb.x + cb.width / 2, cb.y + cb.height / 2);
+      await page.locator(".ctx-item", { hasText: "Renomear" }).waitFor({ timeout: 3000 });
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${SHOTS}/${name}-ctxmenu-${dev.replace(/\s+/g, "-")}.png` });
+      await page.locator(".ctx-item", { hasText: "Excluir" }).tap();
+      await page.waitForFunction(() => ![...document.querySelectorAll("#f-list > button")].some((b) => b.textContent.includes("e2e-item")));
+      assert.deepEqual(errors, []);
+      await ctx.close();
+    }
+  });
+}

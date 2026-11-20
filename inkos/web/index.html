@@ -138,6 +138,7 @@
         const runningMatch = wins.find((w) => w.id === `native-${p.id}` || w.id === `hub-${p.id}`);
         if (runningMatch) b.classList.add("running");
         if (runningMatch?.focused) b.classList.add("focused");
+        if (runningMatch) b.dataset.winId = runningMatch.id;
         b.innerHTML = `${svgIcon(p.iconId, 20)}<span>${p.label}</span>`;
         b.onclick = () => {
           if (runningMatch && runningMatch.focused && !runningMatch.minimized) {
@@ -159,6 +160,7 @@
           b.type = "button";
           b.className = `dock-item running ${w.focused ? "focused" : ""}`;
           b.title = w.title;
+          b.dataset.winId = w.id;
           const shortTitle = w.title.length > 12 ? w.title.slice(0, 11) + "…" : w.title;
           b.innerHTML = `${svgIcon("i-window", 18)}<span>${shortTitle}</span>`;
           b.onclick = () => {
@@ -179,6 +181,31 @@
     };
 
     wm = new WindowManager(desktopEl, { onChange: renderDock });
+    import("./js/contextmenu.js").then((cm) => {
+      cm.installContextMenu();
+      cm.setContextMenu(desktopEl, (e) => {
+        if (e.target.closest(".window")) return [];
+        const open = (id) => () => appload.openApp(id, desktopEl);
+        return [
+          { label: "Aplicativos…", action: () => toggleLauncher() },
+          { label: "Finder", action: open("finder") },
+          { label: "Terminal", action: open("shell") },
+          "-",
+          { label: "Alternar tema", action: () => document.querySelector("#theme-toggle").click() },
+          { label: "Ajustes", action: open("settings") },
+        ];
+      });
+      cm.setContextMenu(dockEl, (e) => {
+        const item = e.target.closest(".dock-item");
+        const winId = item?.dataset.winId;
+        if (!winId || !wm.windows.has(winId)) return item ? [{ label: "Abrir", action: () => item.click() }] : [];
+        const w = wm.windows.get(winId);
+        return [
+          { label: w.minimized ? "Mostrar" : "Minimizar", action: () => (w.minimized ? wm.focus(winId) : wm.minimize(winId)) },
+          { label: "Fechar", danger: true, action: () => wm.close(winId) },
+        ];
+      });
+    }).catch((e) => console.warn("[InkOS] contextmenu.js:", e));
     import("./js/mobile.js").then((m) => m.initMobileSupport?.()).catch((e) => console.warn("[InkOS] mobile.js:", e));
     appload.bindWindowManager(wm);
     renderDock([]);
