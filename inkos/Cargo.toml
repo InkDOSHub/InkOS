@@ -2,7 +2,10 @@
 name = "inkos"
 version = "0.1.0"
 edition = "2021"
+description = "InkSoC kernel for InkOS, a web operating system on WebAssembly"
+repository = "https://github.com/InkDOSHub/InkOS"
 license = "MIT"
+publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -16,12 +19,11 @@ wasm-encoder = "0.221"
 version = "0.3"
 features = [
   "console",
-  "DedicatedWorkerGlobalScope",
-  "Worker",
-  "MessageEvent",
+  "Blob",
   "FileSystemDirectoryHandle",
   "FileSystemFileHandle",
-  "FileSystemSyncAccessHandle",
-  "Blob",
 ]
 
+# wasm-opt runs in scripts/build.sh with an explicit, engine-safe feature set.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

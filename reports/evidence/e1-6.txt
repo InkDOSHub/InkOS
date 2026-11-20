@@ -1,0 +1,30 @@
+# skip webkit: browserType.launch: Executable doesn't exist at /opt/pw-browsers/webkit-2359/pw_run.sh
+✔ chromium: boot without errors, isolated, wasm loaded (320.952432ms)
+✔ chromium: icons, dock, native apps mount (2339.375302ms)
+✔ chromium: window drag, 8-way resize, minimize, maximize, close (1495.459622ms)
+✔ chromium: workspaces isolate windows (382.933359ms)
+✔ chromium: shell, cmd, finder, browser vfs:// (3087.479359ms)
+✔ chromium: themes Latte/Mocha + screenshots (1386.952464ms)
+✔ chromium: offline reload keeps isolation (service worker) (460.363638ms)
+✔ chromium: mobile emulation (iPhone / iPad) layout (874.55027ms)
+﹣ webkit: boot without errors, isolated, wasm loaded (0.547662ms) # webkit not installed
+﹣ webkit: icons, dock, native apps mount (0.497911ms) # SKIP
+﹣ webkit: window drag, 8-way resize, minimize, maximize, close (0.077255ms) # SKIP
+﹣ webkit: workspaces isolate windows (0.054437ms) # SKIP
+﹣ webkit: shell, cmd, finder, browser vfs:// (0.046973ms) # SKIP
+﹣ webkit: themes Latte/Mocha + screenshots (0.036803ms) # SKIP
+﹣ webkit: offline reload keeps isolation (service worker) (0.031241ms) # SKIP
+﹣ webkit: mobile emulation (iPhone / iPad) layout (0.025331ms) # SKIP
+ℹ tests 16
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 8
+ℹ todo 0
+ℹ duration_ms 10615.783787
+wasm-opt ok (74003 bytes)
+verify-wasm: ok (74003 bytes, 7 imports [function])
+verify-wasm: wasm-tools validate (conservative features) ok
+gen-sw: version f122f06b7a38, 62 precache entries
+Built dist/ (63 files)

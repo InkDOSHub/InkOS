@@ -1,0 +1,15 @@
+{
+  "name": "inkos",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "test:unit": "node --test tests/unit/",
+    "test:e2e": "node --test tests/e2e/",
+    "serve": "node tests/serve.mjs dist 8787"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

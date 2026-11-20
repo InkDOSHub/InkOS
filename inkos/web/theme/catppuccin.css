@@ -314,14 +314,16 @@ html, body {
   z-index: 20;
   touch-action: none;
 }
-.resize-n { top: -3px; left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
-.resize-s { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
-.resize-w { left: -3px; top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
-.resize-e { right: -3px; top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
-.resize-nw { top: -4px; left: -4px; width: 12px; height: 12px; cursor: nwse-resize; }
-.resize-ne { top: -4px; right: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
-.resize-sw { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
-.resize-se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
+/* Handles sit inside the border box: .window clips overflow, so handles
+   placed outside the edge were almost impossible to grab. */
+.resize-n { top: 0; left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+.resize-s { bottom: 0; left: 14px; right: 14px; height: 8px; cursor: ns-resize; }
+.resize-w { left: 0; top: 14px; bottom: 14px; width: 8px; cursor: ew-resize; }
+.resize-e { right: 0; top: 14px; bottom: 14px; width: 8px; cursor: ew-resize; }
+.resize-nw { top: 0; left: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+.resize-ne { top: 0; right: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+.resize-sw { bottom: 0; left: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+.resize-se { bottom: 0; right: 0; width: 14px; height: 14px; cursor: nwse-resize; }
 
 /* App Launcher overlay estilo COSMIC */
 .launcher-overlay {

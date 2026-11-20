@@ -1,0 +1,6 @@
+dist/
+target/
+inkos/target/
+node_modules/
+graphify-out/
+*.wasm.opt

@@ -82,30 +82,30 @@ export class WindowManager {
     const initY = typeof y === "number" ? y : Math.max(12, Math.round((dh - winH) / 2 + offset));
 
     const el = document.createElement("section");
-    el.className = "win";
+    el.className = "window";
     el.dataset.winId = id;
     el.innerHTML = `
-      <div class="win-titlebar">
-        <div class="win-traffic">
-          <button class="win-btn close" type="button" title="Fechar" aria-label="Fechar">${svgIcon("i-close", 10)}</button>
-          <button class="win-btn min" type="button" title="Minimizar" aria-label="Minimizar">${svgIcon("i-min", 10)}</button>
-          <button class="win-btn max" type="button" title="Maximizar" aria-label="Maximizar">${svgIcon("i-max", 10)}</button>
+      <div class="window-title">
+        <div class="mac-lights">
+          <button class="mac-light close" type="button" title="Fechar" aria-label="Fechar">${svgIcon("i-close", 10)}</button>
+          <button class="mac-light min" type="button" title="Minimizar" aria-label="Minimizar">${svgIcon("i-min", 10)}</button>
+          <button class="mac-light max" type="button" title="Maximizar" aria-label="Maximizar">${svgIcon("i-max", 10)}</button>
         </div>
-        <div class="win-title"></div>
+        <div class="win-title-text"></div>
       </div>
-      <div class="win-body"></div>
-      <div class="resize-handle n" data-dir="n"></div>
-      <div class="resize-handle s" data-dir="s"></div>
-      <div class="resize-handle e" data-dir="e"></div>
-      <div class="resize-handle w" data-dir="w"></div>
-      <div class="resize-handle ne" data-dir="ne"></div>
-      <div class="resize-handle nw" data-dir="nw"></div>
-      <div class="resize-handle se" data-dir="se"></div>
-      <div class="resize-handle sw" data-dir="sw"></div>
+      <div class="window-body"></div>
+      <div class="resize-handle resize-n" data-dir="n"></div>
+      <div class="resize-handle resize-s" data-dir="s"></div>
+      <div class="resize-handle resize-e" data-dir="e"></div>
+      <div class="resize-handle resize-w" data-dir="w"></div>
+      <div class="resize-handle resize-ne" data-dir="ne"></div>
+      <div class="resize-handle resize-nw" data-dir="nw"></div>
+      <div class="resize-handle resize-se" data-dir="se"></div>
+      <div class="resize-handle resize-sw" data-dir="sw"></div>
     `;
 
-    const titleEl = el.querySelector(".win-title");
-    const bodyEl = el.querySelector(".win-body");
+    const titleEl = el.querySelector(".win-title-text");
+    const bodyEl = el.querySelector(".window-body");
     titleEl.textContent = title || id;
 
     const record = {
@@ -132,20 +132,20 @@ export class WindowManager {
 
     el.addEventListener("pointerdown", () => this.focus(id), { passive: true });
 
-    el.querySelector(".win-btn.close").onclick = (ev) => {
+    el.querySelector(".mac-light.close").onclick = (ev) => {
       ev.stopPropagation();
       this.close(id);
     };
-    el.querySelector(".win-btn.min").onclick = (ev) => {
+    el.querySelector(".mac-light.min").onclick = (ev) => {
       ev.stopPropagation();
       this.minimize(id);
     };
-    el.querySelector(".win-btn.max").onclick = (ev) => {
+    el.querySelector(".mac-light.max").onclick = (ev) => {
       ev.stopPropagation();
       this.toggleMaximize(id);
     };
 
-    const titlebar = el.querySelector(".win-titlebar");
+    const titlebar = el.querySelector(".window-title");
     titlebar.addEventListener("pointerdown", (ev) => {
       if (ev.target.closest("button") || record.maximized) return;
       ev.preventDefault();

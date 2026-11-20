@@ -1,0 +1,12 @@
+# E0.2 env 2026-11-20T08:12:45Z
+rustc: rustc 1.100.0 (0ef1bc386 2026-11-09)
+cargo: cargo 1.100.0 (3acc79c0c 2026-11-05)
+wasm-tools: wasm-tools 1.263.0
+node: v22.23.5
+npm: 10.9.9
+gh: gh version 2.89.0 (2026-03-26)
+wasm-pack: prebuilt 0.15.1 via build.sh; wasm-bindgen-cli 0.2.130 via wasm-pack
+wasm-opt: binaryen npm 132.0.0 (pinned in build.sh)
+wrangler: missing. CLOUDFLARE_API_TOKEN: absent
+gh auth: not logged (GitHub via MCP only)
+playwright 1.63.0: chromium ok; webkit not installed
