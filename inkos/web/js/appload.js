@@ -97,12 +97,29 @@ export function sendFileToApp(appId, { name, mime, bytes }) {
   return true;
 }
 
+// A file waits until the app says inkos-ready (its listener is in place), or
+// a fallback delay for apps that never say it.
+const pendingFiles = new WeakMap();
+function flushPendingFile(fr) {
+  const file = pendingFiles.get(fr);
+  if (!file) return;
+  pendingFiles.delete(fr);
+  try {
+    send(fr.contentWindow, fr.dataset.hubOrigin, fileMessage(file.name, file.mime, file.bytes));
+  } catch (e) {
+    console.warn("[InkOS appload] file send failed:", e.message);
+  }
+}
+
 let stopListening = null;
 function ensureListener() {
   stopListening ??= listen(window, hubOrigins(), (msg, ev) => {
     if (msg.type === "inkos-ready") {
       const fr = [...document.querySelectorAll("iframe[data-hub-origin]")].find((f) => f.contentWindow === ev.source);
-      if (fr) syncTheme();
+      if (fr) {
+        syncTheme();
+        flushPendingFile(fr);
+      }
     }
   });
 }
@@ -160,9 +177,10 @@ export async function openApp(appId, desktopEl, ctx = {}) {
       fr.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads");
       fr.setAttribute("allow", "cross-origin-isolated; camera; microphone; clipboard-read; clipboard-write; fullscreen; autoplay");
       fr.style.cssText = "width:100%;height:100%;border:0;background:var(--panel-solid);";
+      if (ctx.file) pendingFiles.set(fr, ctx.file);
       fr.addEventListener("load", () => {
         syncTheme();
-        if (ctx.file) setTimeout(() => sendFileToApp(appId, ctx.file), 300);
+        if (pendingFiles.has(fr)) setTimeout(() => flushPendingFile(fr), 4000);
       });
       bodyEl.append(fr);
       if (entry.tab) {

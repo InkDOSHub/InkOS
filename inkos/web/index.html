@@ -6,24 +6,24 @@
   <meta name="theme-color" content="#111117">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>InkOS — COSMIC Desktop</title>
+  <meta name="apple-mobile-web-app-title" content="InkOS">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <title>InkOS Desktop</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./theme/catppuccin.css">
 </head>
 <body>
   <header class="topbar" role="banner">
     <div class="topbar-left">
-      <button id="ws-toggle" class="top-pill" type="button" aria-label="Workspaces"><span class="lbl-long">Workspaces</span><span class="lbl-short">WS</span></button>
-      <button id="top-apps-btn" class="top-pill" type="button" aria-label="Applications"><span class="lbl-long">Applications</span><span class="lbl-short">Apps</span></button>
-      <strong class="brand" style="margin-left:4px;font-size:13px;">InkOS</strong>
-    </div>
-    <div class="topbar-center">
-      <span id="clock" style="font-weight:600;">--:--</span>
+      <button id="inkos-menu" class="top-pill inkos-menu-btn" type="button" aria-haspopup="menu" aria-label="Menu InkOS">InkOS</button>
+      <span id="active-app" class="active-app"></span>
     </div>
     <div class="topbar-right">
       <span id="isolation-badge" class="badge-iso"></span>
-      <button id="keys-toggle" class="top-pill" type="button" title="Teclas modificadoras">Keys</button>
-      <button id="theme-toggle" class="top-pill" type="button" aria-label="Alternar tema claro e escuro">Tema</button>
+      <span id="clock" style="font-weight:600;">--:--</span>
+      <!-- Hidden: driven from the InkOS menu -->
+      <button id="keys-toggle" type="button" hidden>Keys</button>
+      <button id="theme-toggle" type="button" hidden>Tema</button>
     </div>
   </header>
 
@@ -93,9 +93,6 @@
     setInterval(updateClock, 15000);
 
     const wsRail = document.querySelector("#workspace-rail");
-    document.querySelector("#ws-toggle").addEventListener("click", () => {
-      wsRail.classList.toggle("open");
-    });
 
     const [{ WindowManager }, appload] = await Promise.all([
       import("./js/wm.js"),
@@ -127,6 +124,7 @@
         { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload.openApp("finder", desktopEl) },
         { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload.openApp("browser", desktopEl) },
         { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload.openApp("shell", desktopEl) },
+        { id: "terminal", label: "Linux", iconId: "i-terminal", action: () => appload.openApp("terminal", desktopEl) },
         { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload.openApp("cmdexe", desktopEl) },
         { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload.openApp("monitor", desktopEl) },
         { id: "settings", label: "Ajustes", iconId: "i-settings", action: () => appload.openApp("settings", desktopEl) },
@@ -150,7 +148,7 @@
         dockEl.append(b);
       }
 
-      const openWins = wins.filter((w) => !/^native-(finder|browser|shell|cmdexe|monitor|settings)$/.test(w.id));
+      const openWins = wins.filter((w) => !/^(native-(finder|browser|shell|cmdexe|monitor|settings)|hub-terminal)$/.test(w.id));
       if (openWins.length > 0) {
         const sep = document.createElement("div");
         sep.className = "dock-sep";
@@ -170,6 +168,10 @@
           dockEl.append(b);
         }
       }
+
+      const active = wins.find((w) => w.focused && !w.minimized);
+      const activeEl = document.querySelector("#active-app");
+      if (activeEl) activeEl.textContent = active ? active.title.split(" — ")[0] : "";
 
       for (let i = 1; i <= 3; i++) {
         const el = document.querySelector(`#ws-count-${i}`);
@@ -194,6 +196,33 @@
           { label: "Alternar tema", action: () => document.querySelector("#theme-toggle").click() },
           { label: "Ajustes", action: open("settings") },
         ];
+      });
+      const toggleFullscreen = () => {
+        const d = document, el = d.documentElement;
+        if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+        else (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: "hide" });
+      };
+      const menuBtn = document.querySelector("#inkos-menu");
+      menuBtn.addEventListener("click", () => {
+        const r = menuBtn.getBoundingClientRect();
+        const dark = document.documentElement.dataset.theme !== "latte";
+        const keysOpen = document.documentElement.classList.contains("mods-open");
+        const wsCard = (n) => wsRail.querySelector(`.ws-card[data-ws="${n}"]`);
+        cm.openContextMenu(r.left - 4, r.bottom - 2, [
+          { label: "Sobre o InkOS", action: () => appload.openApp("monitor", desktopEl) },
+          { label: "Ajustes…", action: () => appload.openApp("settings", desktopEl) },
+          "-",
+          ...[1, 2, 3].map((n) => ({ label: `${wm.workspace === n ? "✓ " : ""}Workspace ${n}`, action: () => wsCard(n)?.click() })),
+          { label: "Mostrar workspaces", action: () => wsRail.classList.toggle("open") },
+          "-",
+          { label: `${keysOpen ? "✓ " : ""}Teclas (Esc, Tab, Ctrl…)`, action: () => document.querySelector("#keys-toggle").click() },
+          { label: dark ? "Tema claro" : "Tema escuro", action: () => document.querySelector("#theme-toggle").click() },
+          "-",
+          ...(document.fullscreenEnabled || document.webkitFullscreenEnabled
+            ? [{ label: document.fullscreenElement || document.webkitFullscreenElement ? "Sair da tela cheia" : "Tela cheia", action: () => toggleFullscreen() }]
+            : [{ label: "Tela cheia: Compartilhar → Adicionar à Tela de Início", disabled: true }]),
+          { label: "Recarregar InkOS", action: () => location.reload() },
+        ]);
       });
       cm.setContextMenu(dockEl, (e) => {
         const item = e.target.closest(".dock-item");
@@ -301,7 +330,6 @@
       if (e.target.closest("button")) toggleLauncher(true);
     });
 
-    document.querySelector("#top-apps-btn").addEventListener("click", () => toggleLauncher());
     document.querySelector("#launcher-close").addEventListener("click", () => toggleLauncher(true));
 
     document.querySelector("#theme-toggle").addEventListener("click", () => {

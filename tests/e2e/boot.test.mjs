@@ -50,6 +50,15 @@ async function bootPage(browser, { theme, viewport = { width: 1280, height: 800 
   return { ctx, page, errors };
 }
 
+// InkOS menu (top-left), like the Apple menu.
+async function inkosMenu(page, label, { tap = false } = {}) {
+  await (tap ? page.tap("#inkos-menu") : page.click("#inkos-menu"));
+  const item = page.locator(".ctx-menu .ctx-item", { hasText: label }).first();
+  await item.waitFor();
+  if (tap) await page.waitForTimeout(400);
+  await (tap ? item.tap() : item.click());
+}
+
 const dockClick = (page, label) => page.locator("#dock .dock-item", { hasText: label }).first().click();
 
 for (const name of wanted) {
@@ -78,7 +87,7 @@ for (const name of wanted) {
     for (const id of ["i-apps", "i-finder", "i-browser", "i-terminal", "i-cmd", "i-monitor", "i-settings", "i-window"]) {
       assert.ok(svg.includes(`id="${id}"`), `icon ${id} missing`);
     }
-    assert.equal(await page.locator("#dock .dock-item").count(), 7);
+    assert.equal(await page.locator("#dock .dock-item").count(), 8);
     for (const [label, id] of [["Finder", "finder"], ["Browser", "browser"], ["Terminal", "shell"], ["CMD/EXE", "cmdexe"], ["Monitor", "monitor"], ["Ajustes", "settings"]]) {
       await dockClick(page, label);
       const win = page.locator(`.window[data-win-id="native-${id}"]`);
@@ -143,10 +152,9 @@ for (const name of wanted) {
     await dockClick(page, "Monitor");
     const win = page.locator('.window[data-win-id="native-monitor"]');
     await win.waitFor();
-    await page.click("#ws-toggle");
-    await page.click('.ws-card[data-ws="2"]');
+    await inkosMenu(page, "Workspace 2");
     assert.equal(await win.isVisible(), false);
-    await page.click('.ws-card[data-ws="1"]');
+    await inkosMenu(page, "Workspace 1");
     assert.equal(await win.isVisible(), true);
     await ctx.close();
   });
@@ -281,7 +289,7 @@ for (const name of wanted) {
     const b = browsers[name];
     if (!b) return t.skip();
     const { ctx, page, errors } = await bootPage(b, { theme: "latte" });
-    await page.click("#top-apps-btn");
+    await dockClick(page, "Apps");
     await page.waitForSelector("#app-grid .app-tile[data-app-id='foto']", { timeout: 20000 });
     const kinds = await page.$$eval("#app-grid .app-tile small", (els) => els.map((e) => e.textContent));
     const hub = kinds.filter((k) => k.startsWith("Hub")).length;
@@ -295,8 +303,12 @@ for (const name of wanted) {
     const frame = await (await fr.elementHandle()).contentFrame();
     await frame.waitForLoadState("load");
     await frame.waitForFunction(() => document.documentElement.dataset.theme === "light", null, { timeout: 15000 });
-    await page.click("#theme-toggle");
-    await frame.waitForFunction(() => document.documentElement.dataset.theme === "dark", null, { timeout: 15000 });
+    await inkosMenu(page, "Tema escuro");
+    // The Hub only accepts theme messages from InkOS origins (inkos-5k7.pages.dev
+    // and its previews), so a local run cannot drive the Hub app's theme.
+    if (/(^|\.)inkos-5k7\.pages\.dev$/.test(new URL(baseURL).hostname)) {
+      await frame.waitForFunction(() => document.documentElement.dataset.theme === "dark", null, { timeout: 15000 });
+    }
     assert.deepEqual(errors, []);
     await ctx.close();
   });
@@ -356,7 +368,7 @@ for (const name of wanted) {
       await sh.waitFor();
       await sh.fill("pwd");
       await sh.press("Enter");
-      await page.tap("#keys-toggle");
+      await inkosMenu(page, "Teclas", { tap: true });
       await page.tap('#modifier-bar button[data-key="ArrowUp"]');
       assert.equal(await sh.inputValue(), "pwd", `${dev}: ArrowUp from modifier bar`);
       const ctrl = page.locator('#modifier-bar button[data-key="Control"]');

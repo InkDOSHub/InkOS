@@ -120,5 +120,10 @@ export function installContextMenu(doc = document) {
     if (e.key === "Escape") closeContextMenu();
   });
   doc.defaultView?.addEventListener("resize", closeContextMenu);
-  doc.defaultView?.addEventListener("blur", closeContextMenu);
+  // A tap inside an app iframe never reaches this document; the window losing
+  // focus to that iframe is the signal. Ignore focus moves right after opening
+  // (an app focusing itself on load).
+  doc.defaultView?.addEventListener("blur", () => {
+    if (Date.now() - openedAt > 400 && doc.activeElement?.tagName === "IFRAME") closeContextMenu();
+  });
 }

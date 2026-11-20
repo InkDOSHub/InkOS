@@ -1,4 +1,4 @@
-/* InkOS Theme — MocaccinoOS / COSMIC + Catppuccin */
+/* InkOS Desktop theme — Catppuccin */
 :root,
 :root[data-theme="mocha"],
 :root[data-theme="dark"] {
@@ -72,7 +72,7 @@ html, body {
   pointer-events: none;
 }
 
-/* Topbar estilo COSMIC / MocaccinoOS */
+/* Topbar */
 .topbar {
   position: fixed;
   top: 0;
@@ -331,7 +331,7 @@ html, body {
 .resize-sw { bottom: 0; left: 0; width: 14px; height: 14px; cursor: nesw-resize; }
 .resize-se { bottom: 0; right: 0; width: 14px; height: 14px; cursor: nwse-resize; }
 
-/* App Launcher overlay estilo COSMIC */
+/* App Launcher overlay */
 .launcher-overlay {
   position: fixed;
   inset: 44px 16px 84px 16px;
@@ -663,3 +663,8 @@ input, textarea, [contenteditable="true"] { -webkit-touch-callout: default; }
    because there is no hover. */
 html { touch-action: manipulation; }
 .is-touch .mac-light { color: rgba(0, 0, 0, 0.72); }
+
+/* InkOS menu at the far left of the top bar (like the Apple menu) */
+.inkos-menu-btn { font-weight: 800; letter-spacing: 0.2px; }
+.active-app { font-weight: 600; font-size: 13px; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.topbar-right { gap: 10px; }

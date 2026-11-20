@@ -16,7 +16,7 @@ branch: autopilot/2026-11-20. base 842113e (main). tag local `pre-autopilot-2026
 | E1.4 higiene build | FEITO | fc70563 | evidence/e1-6.txt |
 | E1.5 boot sem alocação gigante | FEITO | fc70563 | evidence/e1-5.txt |
 | E1.6 E2E | PARCIAL: Chromium 12/12; WebKit BLOQUEADO B2 | 4b8244a | evidence/e5-5-e2e.txt |
-| E1.7 deploy | PARCIAL: preview verde 12/12; prod = merge PR (D2) | 4b8244a | evidence/e1-7-preview.txt |
+| E1.7 deploy | FEITO: PR #1 merged 4ea431b; prod E2E 13/13 Chromium | 4b8244a | evidence/e1-7-preview.txt |
 | E2.1 swap OPFS | FEITO (Chromium); dispositivo PENDENTE-DISPOSITIVO | c203551 | evidence/e2-1-rust.txt, e5-5-e2e.txt |
 | E2.2 .inkos v1 | FEITO | a8dc1e5 | evidence/e2-2.txt, unit.txt |
 | E2.3 UX mobile | PARCIAL: iPhone Safari confirmado (toque, janelas, menu); falta teclado físico e Ctrl | a16a7cc | evidence/e2-3.txt |

@@ -20,7 +20,7 @@ export function initMobileSupport({ doc = document, win = window } = {}) {
   // Close rails when tapping elsewhere.
   doc.addEventListener("pointerdown", (e) => {
     const rail = doc.querySelector("#workspace-rail");
-    if (rail?.classList.contains("open") && !e.target.closest("#workspace-rail, #ws-toggle")) rail.classList.remove("open");
+    if (rail?.classList.contains("open") && !e.target.closest("#workspace-rail, #inkos-menu, .ctx-menu")) rail.classList.remove("open");
   });
 }
 

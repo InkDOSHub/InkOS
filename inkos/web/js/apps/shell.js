@@ -48,10 +48,23 @@ export function mountShell(root, { vfs, openApp }) {
             "cat <file>, write <file> <texto>, rm <path>, open <appId>,",
             "exe [arquivo.exe], iso, diag, freeze <senha>, wake <senha>,",
             "search [dir] [--mb N] [--days N] [--ext pdf],",
-            "rename <dir> <achar> <trocar> [--num] [--preview], sync <origem> <destino> [--preview]",
+            "rename <dir> <achar> <trocar> [--num] [--preview], sync <origem> <destino> [--preview],",
+            "linux [arquivo] (Alpine Linux completo, InkShell; o arquivo vai para a home)",
           ].join("\n")
         );
         break;
+      case "linux": {
+        // Full Linux terminal: InkShell (Alpine on InkSoC) from the Hub.
+        if (rest[0]) {
+          const p = resolvePath(rest[0]);
+          await vfs.serveToHubApp(p, "terminal", (id, file) => openApp(id, undefined, { file }));
+          print(`${p} → Linux (home)`);
+        } else {
+          await openApp("terminal");
+          print("Abrindo Linux (InkShell)…");
+        }
+        break;
+      }
       case "clear":
         out.textContent = "";
         break;
