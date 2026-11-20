@@ -152,7 +152,11 @@ export class WindowManager {
     this.desktopEl.append(el);
     this.focus(id);
 
-    el.addEventListener("pointerdown", () => this.focus(id), { passive: true });
+    // On iOS, a visible DOM change made while a touch starts (for example the
+    // dock being rebuilt) makes WebKit treat the tap as a hover and drop the
+    // click. So a tap only restyles here; the change notification (which
+    // redraws the dock) runs after the tap has produced its click.
+    el.addEventListener("pointerdown", (ev) => this.focus(id, { deferEmit: ev.pointerType !== "mouse" }), { passive: true });
 
     el.querySelector(".mac-light.close").onclick = (ev) => {
       ev.stopPropagation();
@@ -257,9 +261,11 @@ export class WindowManager {
     return bodyEl;
   }
 
-  focus(id) {
+  focus(id, { deferEmit = false } = {}) {
     const target = this.windows.get(id);
     if (!target) return;
+    const visible = !target.minimized && target.workspace === this.workspace;
+    if (deferEmit && target.focused && visible) return;
     target.minimized = false;
     if (target.workspace !== this.workspace) {
       this.setWorkspace(target.workspace);
@@ -271,7 +277,12 @@ export class WindowManager {
       w.focused = w.id === id;
       w.el.classList.toggle("focused", w.focused);
     }
-    this._emit();
+    if (deferEmit) {
+      clearTimeout(this._emitTimer);
+      this._emitTimer = setTimeout(() => this._emit(), 450);
+    } else {
+      this._emit();
+    }
   }
 
   moveToWorkspace(id, ws) {
