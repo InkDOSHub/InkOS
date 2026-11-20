@@ -52,7 +52,7 @@ export function isFrameApp(id) {
   return frameApps.has(id);
 }
 
-function hubBase() {
+export function hubBase() {
   return new URL("/", registryUrl()).href;
 }
 

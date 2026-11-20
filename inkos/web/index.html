@@ -257,6 +257,8 @@
             ? [{ label: document.fullscreenElement || document.webkitFullscreenElement ? "Sair da tela cheia" : "Tela cheia", action: () => toggleFullscreen() }]
             : [{ label: "Tela cheia: Compartilhar → Adicionar à Tela de Início", disabled: true }]),
           { label: "Recarregar InkOS", action: () => location.reload() },
+          "-",
+          { label: "Voltar ao InkDOS Hub", action: () => location.assign(appload.hubBase()) },
         ]);
       });
       cm.setContextMenu(dockEl, (e) => {
