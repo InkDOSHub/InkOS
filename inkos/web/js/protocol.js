@@ -15,6 +15,8 @@ const SCHEMAS = {
     m.data instanceof ArrayBuffer,
   "inkos-ready": (m) => m.app === undefined || (typeof m.app === "string" && m.app.length <= 64),
   // An app names what it shows (the InkSoC engine: the program in front); InkOS puts it in the title bar.
+  "inkos-size": (m) =>
+    Number.isInteger(m.width) && Number.isInteger(m.height) && m.width >= 1 && m.width <= 4096 && m.height >= 1 && m.height <= 4096,
   "inkos-title": (m) => typeof m.title === "string" && m.title.length > 0 && m.title.length <= 128,
   // The InkSoC engine: the Windows programs installed on its drive C: (Apps shows them).
   "inksoc-programs": (m) =>

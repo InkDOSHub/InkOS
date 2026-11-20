@@ -146,6 +146,9 @@ function ensureListener() {
     } else if (msg.type === "inkos-title") {
       const winId = fr.closest(".window")?.dataset.winId;
       if (winId) wmInstance?.setTitle(winId, msg.title);
+    } else if (msg.type === "inkos-size") {
+      const winId = fr.closest(".window")?.dataset.winId;
+      if (winId) wmInstance?.fitContent(winId, msg.width, msg.height);
     }
   });
 }

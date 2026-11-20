@@ -49,6 +49,14 @@ test("inkos-title: a short title is valid, empty or long is dropped", () => {
   assert.equal(validate({ v: 1, type: "inkos-title" }), null);
 });
 
+test("inkos-size: whole pixel sizes up to 4096", () => {
+  assert.ok(validate({ v: 1, type: "inkos-size", width: 240, height: 180 }));
+  assert.equal(validate({ v: 1, type: "inkos-size", width: 0, height: 180 }), null);
+  assert.equal(validate({ v: 1, type: "inkos-size", width: 240.5, height: 180 }), null);
+  assert.equal(validate({ v: 1, type: "inkos-size", width: 5000, height: 180 }), null);
+  assert.equal(validate({ v: 1, type: "inkos-size", width: "240", height: 180 }), null);
+});
+
 test("inksoc-programs: Windows paths to .exe only", () => {
   const ok = { v: 1, type: "inksoc-programs", programs: [{ name: "7-Zip File Manager", path: "C:\\Program Files\\7-Zip\\7zFM.exe" }] };
   assert.ok(validate(ok));

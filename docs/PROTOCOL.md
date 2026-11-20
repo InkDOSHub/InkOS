@@ -67,6 +67,18 @@ Optional. Lets InkOS resend the theme once the app's listeners are attached.
 Optional. InkOS puts `title` (1–128 characters) in the app window's title bar.
 The InkSoC engine page sends the name of the program in front.
 
+### `inkos-size` (app → InkOS)
+
+```js
+{ v: 1, type: "inkos-size", width: 420, height: 310 }
+```
+
+Optional. The size in CSS pixels of what the app wants to show (whole numbers, 1–4096).
+InkOS sizes the window around it (up to 1.5×, never larger than the desktop, centred
+where it was). A window the user has resized or maximized keeps its size. The InkSoC
+engine page sends the box around the program's windows, so the InkOS window follows a
+Windows program's window.
+
 ## Engine windows (InkSoC, InkShell)
 
 `appload.registerFrameApp(id, { path, title, multi })` opens a Hub page as an InkOS
