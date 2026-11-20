@@ -46,7 +46,9 @@ export function mountShell(root, { vfs, openApp }) {
           [
             "Comandos: help, clear, pwd, ls [dir], cd <dir>, mkdir <dir>,",
             "cat <file>, write <file> <texto>, rm <path>, open <appId>,",
-            "exe [arquivo.exe], iso, diag, freeze <senha>, wake <senha>",
+            "exe [arquivo.exe], iso, diag, freeze <senha>, wake <senha>,",
+            "search [dir] [--mb N] [--days N] [--ext pdf],",
+            "rename <dir> <achar> <trocar> [--num] [--preview], sync <origem> <destino> [--preview]",
           ].join("\n")
         );
         break;
@@ -108,6 +110,28 @@ export function mountShell(root, { vfs, openApp }) {
         await openApp("cmdexe", undefined, { exePath: rest[0] ? resolvePath(rest[0]) : undefined });
         print("Abrindo CMD / Instalador .EXE...");
         break;
+      case "search":
+      case "rename":
+      case "sync": {
+        const tools = await import("../tools.js");
+        const flags = new Set(rest.filter((a) => a.startsWith("--")));
+        const opt = (name) => { const i = rest.indexOf(name); return i >= 0 ? rest[i + 1] : undefined; };
+        const pos = rest.filter((a, i) => !a.startsWith("--") && !(i > 0 && ["--mb", "--days", "--ext"].includes(rest[i - 1])));
+        const preview = flags.has("--preview");
+        if (cmd.toLowerCase() === "search") {
+          const hits = await tools.search(vfs, resolvePath(pos[0] || cwd), { minMB: Number(opt("--mb") || 0), days: Number(opt("--days") || 0), ext: opt("--ext") || "" });
+          print(hits.length ? hits.map((h) => `${h.path}  (${h.size} B)`).join("\n") : "Nada encontrado.");
+        } else if (cmd.toLowerCase() === "rename") {
+          if (!pos[0]) return print("Uso: rename <dir> <achar> <trocar> [--num] [--preview]");
+          const plan = await tools.rename(vfs, resolvePath(pos[0]), { find: pos[1] || "", to: pos[2] || "", number: flags.has("--num") }, { preview });
+          print(plan.length ? plan.map((p) => `${preview ? "[prévia] " : ""}${p.from} -> ${p.to}`).join("\n") : "Nenhum nome muda.");
+        } else {
+          if (!pos[0] || !pos[1]) return print("Uso: sync <origem> <destino> [--preview]");
+          const acts = await tools.sync(vfs, resolvePath(pos[0]), resolvePath(pos[1]), { preview });
+          print(acts.length ? acts.map((a) => `${preview ? "[prévia] " : ""}${a.replace ? "atualiza" : "copia"} ${a.copy} -> ${a.to}`).join("\n") : "Já sincronizado.");
+        }
+        break;
+      }
       case "iso":
         print(`crossOriginIsolated = ${window.crossOriginIsolated}`);
         break;

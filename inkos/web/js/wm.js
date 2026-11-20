@@ -2,6 +2,8 @@
 const svgIcon = (id, size = 14) =>
   `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
 
+import { setContextMenu } from "./contextmenu.js";
+
 export class WindowManager {
   constructor(desktopEl, { onChange } = {}) {
     this.desktopEl = desktopEl;
@@ -9,6 +11,26 @@ export class WindowManager {
     this.windows = new Map();
     this.zCounter = 10;
     this.workspace = 1;
+    // Keep windows inside the desktop when it changes size (rotation, external
+    // monitor, on-screen keyboard, modifier bar).
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(() => this.fitAll()).observe(desktopEl);
+    }
+  }
+
+  fitAll() {
+    const dw = this.desktopEl.clientWidth;
+    const dh = this.desktopEl.clientHeight;
+    if (!dw || !dh) return;
+    for (const w of this.windows.values()) {
+      if (!w.maximized) {
+        w.width = Math.min(w.width, Math.max(320, dw));
+        w.height = Math.min(w.height, Math.max(220, dh));
+        w.x = Math.min(Math.max(0, w.x), Math.max(0, dw - w.width));
+        w.y = Math.min(Math.max(0, w.y), Math.max(0, dh - w.height));
+      }
+      this._applyGeometry(w);
+    }
   }
 
   setWorkspace(ws) {
@@ -82,30 +104,30 @@ export class WindowManager {
     const initY = typeof y === "number" ? y : Math.max(12, Math.round((dh - winH) / 2 + offset));
 
     const el = document.createElement("section");
-    el.className = "win";
+    el.className = "window";
     el.dataset.winId = id;
     el.innerHTML = `
-      <div class="win-titlebar">
-        <div class="win-traffic">
-          <button class="win-btn close" type="button" title="Fechar" aria-label="Fechar">${svgIcon("i-close", 10)}</button>
-          <button class="win-btn min" type="button" title="Minimizar" aria-label="Minimizar">${svgIcon("i-min", 10)}</button>
-          <button class="win-btn max" type="button" title="Maximizar" aria-label="Maximizar">${svgIcon("i-max", 10)}</button>
+      <div class="window-title">
+        <div class="mac-lights">
+          <button class="mac-light close" type="button" title="Fechar" aria-label="Fechar">${svgIcon("i-close", 10)}</button>
+          <button class="mac-light min" type="button" title="Minimizar" aria-label="Minimizar">${svgIcon("i-min", 10)}</button>
+          <button class="mac-light max" type="button" title="Maximizar" aria-label="Maximizar">${svgIcon("i-max", 10)}</button>
         </div>
-        <div class="win-title"></div>
+        <div class="win-title-text"></div>
       </div>
-      <div class="win-body"></div>
-      <div class="resize-handle n" data-dir="n"></div>
-      <div class="resize-handle s" data-dir="s"></div>
-      <div class="resize-handle e" data-dir="e"></div>
-      <div class="resize-handle w" data-dir="w"></div>
-      <div class="resize-handle ne" data-dir="ne"></div>
-      <div class="resize-handle nw" data-dir="nw"></div>
-      <div class="resize-handle se" data-dir="se"></div>
-      <div class="resize-handle sw" data-dir="sw"></div>
+      <div class="window-body"></div>
+      <div class="resize-handle resize-n" data-dir="n"></div>
+      <div class="resize-handle resize-s" data-dir="s"></div>
+      <div class="resize-handle resize-e" data-dir="e"></div>
+      <div class="resize-handle resize-w" data-dir="w"></div>
+      <div class="resize-handle resize-ne" data-dir="ne"></div>
+      <div class="resize-handle resize-nw" data-dir="nw"></div>
+      <div class="resize-handle resize-se" data-dir="se"></div>
+      <div class="resize-handle resize-sw" data-dir="sw"></div>
     `;
 
-    const titleEl = el.querySelector(".win-title");
-    const bodyEl = el.querySelector(".win-body");
+    const titleEl = el.querySelector(".win-title-text");
+    const bodyEl = el.querySelector(".window-body");
     titleEl.textContent = title || id;
 
     const record = {
@@ -130,22 +152,38 @@ export class WindowManager {
     this.desktopEl.append(el);
     this.focus(id);
 
-    el.addEventListener("pointerdown", () => this.focus(id), { passive: true });
+    // On iOS, a visible DOM change made while a touch starts (for example the
+    // dock being rebuilt) makes WebKit treat the tap as a hover and drop the
+    // click. So a tap only restyles here; the change notification (which
+    // redraws the dock) runs after the tap has produced its click.
+    el.addEventListener("pointerdown", (ev) => this.focus(id, { deferEmit: ev.pointerType !== "mouse" }), { passive: true });
 
-    el.querySelector(".win-btn.close").onclick = (ev) => {
+    el.querySelector(".mac-light.close").onclick = (ev) => {
       ev.stopPropagation();
       this.close(id);
     };
-    el.querySelector(".win-btn.min").onclick = (ev) => {
+    el.querySelector(".mac-light.min").onclick = (ev) => {
       ev.stopPropagation();
       this.minimize(id);
     };
-    el.querySelector(".win-btn.max").onclick = (ev) => {
+    el.querySelector(".mac-light.max").onclick = (ev) => {
       ev.stopPropagation();
       this.toggleMaximize(id);
     };
 
-    const titlebar = el.querySelector(".win-titlebar");
+    const titlebar = el.querySelector(".window-title");
+    setContextMenu(titlebar, () => [
+      { label: "Minimizar", action: () => this.minimize(id) },
+      { label: record.maximized ? "Restaurar" : "Maximizar", action: () => this.toggleMaximize(id) },
+      "-",
+      ...[1, 2, 3].map((n) => ({
+        label: `Mover para Workspace ${n}`,
+        disabled: record.workspace === n,
+        action: () => this.moveToWorkspace(id, n),
+      })),
+      "-",
+      { label: "Fechar", danger: true, action: () => this.close(id) },
+    ]);
     titlebar.addEventListener("pointerdown", (ev) => {
       if (ev.target.closest("button") || record.maximized) return;
       ev.preventDefault();
@@ -223,9 +261,11 @@ export class WindowManager {
     return bodyEl;
   }
 
-  focus(id) {
+  focus(id, { deferEmit = false } = {}) {
     const target = this.windows.get(id);
     if (!target) return;
+    const visible = !target.minimized && target.workspace === this.workspace;
+    if (deferEmit && target.focused && visible) return;
     target.minimized = false;
     if (target.workspace !== this.workspace) {
       this.setWorkspace(target.workspace);
@@ -237,7 +277,19 @@ export class WindowManager {
       w.focused = w.id === id;
       w.el.classList.toggle("focused", w.focused);
     }
-    this._emit();
+    if (deferEmit) {
+      clearTimeout(this._emitTimer);
+      this._emitTimer = setTimeout(() => this._emit(), 450);
+    } else {
+      this._emit();
+    }
+  }
+
+  moveToWorkspace(id, ws) {
+    const target = this.windows.get(id);
+    if (!target) return;
+    target.workspace = Number(ws) || 1;
+    this.setWorkspace(this.workspace);
   }
 
   minimize(id) {

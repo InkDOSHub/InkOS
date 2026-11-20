@@ -45,33 +45,44 @@ if ! command -v wasm-pack >/dev/null 2>&1; then
 fi
 command -v wasm-pack >/dev/null 2>&1 || { echo "wasm-pack installation failed" >&2; exit 1; }
 
-export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-feature=+bulk-memory,+mutable-globals"
 rm -rf dist
 mkdir -p dist/pkg
 wasm-pack build inkos --target web --release --out-dir ../dist/pkg
 
 WASM=dist/pkg/inkos_bg.wasm
 
-# wasm-opt: se não existir, tenta binaryen via npm. Qualquer falha aqui NÃO derruba o build.
-if ! command -v wasm-opt >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+# wasm-opt is optional. Never use --all-features here: binaryen then re-encodes
+# the module with post-MVP encodings (compact-imports, ...) that Safari, Chrome
+# and Node reject ("can't get 0th Import's kind" / "Invalid import kind 127").
+# Enable only the features rustc emits for wasm32-unknown-unknown by default.
+WASM_OPT_FEATURES=(--enable-bulk-memory --enable-mutable-globals --enable-sign-ext
+  --enable-nontrapping-float-to-int --enable-multivalue --enable-reference-types)
+BINARYEN_NPM_VERSION=132.0.0
+if [[ "${INKOS_WASM_OPT:-1}" == "1" ]] && ! command -v wasm-opt >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
   optdir=$(mktemp -d "${TMPDIR:-/tmp}/binaryen.XXXXXX")
-  if npm install --prefix "$optdir" --no-audit --no-fund --silent binaryen >/dev/null 2>&1; then
+  if npm install --prefix "$optdir" --no-audit --no-fund --silent "binaryen@${BINARYEN_NPM_VERSION}" >/dev/null 2>&1; then
     export PATH="$optdir/node_modules/.bin:$PATH"
+  else
+    echo "binaryen@${BINARYEN_NPM_VERSION} install failed; continuing without wasm-opt" >&2
   fi
 fi
-if command -v wasm-opt >/dev/null 2>&1 && [[ -f "$WASM" ]]; then
-  if wasm-opt -O3 --all-features --strip-debug "$WASM" -o "${WASM}.opt"; then
-    mv "${WASM}.opt" "$WASM"
-    echo "wasm-opt ok ($(wc -c < "$WASM" | tr -d ' ') bytes)"
-  else
-    rm -f "${WASM}.opt"
-    echo "wasm-opt failed; keeping unoptimized wasm" >&2
-  fi
+if [[ "${INKOS_WASM_OPT:-1}" == "1" ]] && command -v wasm-opt >/dev/null 2>&1; then
+  wasm-opt -O3 "${WASM_OPT_FEATURES[@]}" --strip-debug --strip-target-features "$WASM" -o "${WASM}.opt"
+  mv "${WASM}.opt" "$WASM"
+  echo "wasm-opt ok ($(wc -c < "$WASM" | tr -d ' ') bytes)"
 else
-  echo "wasm-opt unavailable; using wasm-pack output without optimization" >&2
+  echo "wasm-opt skipped (not installed or INKOS_WASM_OPT=0)"
 fi
 
+# Fail the build if any engine-level check rejects the module.
+"$ROOT/scripts/verify-wasm.sh" "$WASM"
+
 cp -a inkos/web/. dist/
+
+# InkBench kernels (same code as the native host runner) for bench/device.html.
+cargo build -q --release --lib --target wasm32-unknown-unknown --manifest-path bench/kernels/Cargo.toml
+cp bench/kernels/target/wasm32-unknown-unknown/release/inkbench_kernels.wasm dist/bench/
+"$ROOT/scripts/verify-wasm.sh" dist/bench/inkbench_kernels.wasm
 [[ -f dist/_headers ]] || { echo "dist/_headers missing" >&2; exit 1; }
 grep -q '^  Cross-Origin-Opener-Policy: same-origin$' dist/_headers
 grep -q '^  Cross-Origin-Embedder-Policy: require-corp$' dist/_headers
@@ -82,5 +93,8 @@ if [[ -n "$big" ]]; then
   echo "WARNING: files over 25 MiB (Cloudflare Pages limit):" >&2
   echo "$big" >&2
 fi
+
+# Service worker: version = hash of dist content, precache = every shipped file.
+node "$ROOT/scripts/gen-sw.mjs" dist
 
 printf 'Built dist/ (%s files)\n' "$(find dist -type f | wc -l | tr -d ' ')"

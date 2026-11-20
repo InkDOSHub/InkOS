@@ -2,6 +2,8 @@
 const svg = (id, size = 16) =>
   `<svg width="${size}" height="${size}" style="flex:0 0 auto;" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
 
+import { setContextMenu } from "../contextmenu.js";
+
 export function mountFinder(root, { vfs, openApp, syncTheme }) {
   let cwd = "/Home";
   let selected = null;
@@ -108,9 +110,38 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
         }
       };
 
+      setContextMenu(card, () => {
+        if (selected?.path !== item.path) {
+          selected = item;
+          updateToolbar();
+          for (const c of listEl.children) {
+            const on = c === card;
+            c.style.borderColor = on ? "var(--accent)" : "var(--border)";
+            c.style.background = on ? "var(--accent-soft)" : "var(--surface)";
+          }
+        }
+        const isFile = item.type === "file";
+        return [
+          { label: "Abrir", action: () => btnOpen.onclick() },
+          isFile && { label: "Abrir no Hub…", action: () => btnSendHub.onclick() },
+          isFile && { label: "Baixar", action: () => btnDl.onclick() },
+          "-",
+          { label: "Renomear", action: () => btnRen.onclick() },
+          { label: "Excluir", danger: true, action: () => btnDel.onclick() },
+        ];
+      });
+
       listEl.append(card);
     }
   };
+
+  setContextMenu(listEl, () => [
+    { label: "Nova pasta", action: () => root.querySelector("#f-new-dir").onclick() },
+    { label: "Novo arquivo", action: () => root.querySelector("#f-new-txt").onclick() },
+    { label: "Importar…", action: () => fileInput.click() },
+    "-",
+    { label: "Atualizar", action: () => render() },
+  ]);
 
   root.querySelectorAll("[data-nav]").forEach((b) => {
     b.onclick = () => {
@@ -179,21 +210,21 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
       return;
     }
     if (selected.name.toLowerCase().endsWith(".pdf")) {
-      await vfs.serveToHubApp(selected.path, "pdf", (id) => openApp(id));
+      await vfs.serveToHubApp(selected.path, "pdf", (id, file) => openApp(id, undefined, { file }));
       return;
     }
     if (/\.(png|jpg|jpeg|webp|gif)$/i.test(selected.name)) {
-      await vfs.serveToHubApp(selected.path, "foto", (id) => openApp(id));
+      await vfs.serveToHubApp(selected.path, "foto", (id, file) => openApp(id, undefined, { file }));
       return;
     }
-    await vfs.serveToHubApp(selected.path, "texto", (id) => openApp(id));
+    await vfs.serveToHubApp(selected.path, "texto", (id, file) => openApp(id, undefined, { file }));
   };
 
   btnSendHub.onclick = async () => {
     if (!selected || selected.type !== "file") return;
     const appId = prompt("ID do app no Hub (ex.: texto, pdf, foto, codigo, zip, quadro):", "texto");
     if (!appId) return;
-    await vfs.serveToHubApp(selected.path, appId.trim(), (id) => openApp(id));
+    await vfs.serveToHubApp(selected.path, appId.trim(), (id, file) => openApp(id, undefined, { file }));
   };
 
   btnDl.onclick = () => selected && vfs.download(selected.path);

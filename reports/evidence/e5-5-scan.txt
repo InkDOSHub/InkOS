@@ -1,0 +1,5 @@
+# E5.5 secret + license scan 2026-11-20T08:48:36Z
+## secrets (git ls-files + dist)
+hits acima (vazio = 0)
+## licenses bundle
+0 GPL/AGPL/LGPL/MPL em dist e inkos/web

@@ -1,0 +1,31 @@
+# E1.1/E1.2 evidence 2026-11-20T08:06:00Z
+## prod headers (curl -I)
+> https://inkos-5k7.pages.dev/
+HTTP/2 200 
+content-type: text/html; charset=utf-8
+cache-control: public, max-age=0, must-revalidate
+cross-origin-embedder-policy: require-corp
+cross-origin-opener-policy: same-origin
+> https://inkos-5k7.pages.dev/pkg/inkos_bg.wasm
+HTTP/2 200 
+content-type: application/wasm
+cache-control: public, max-age=0, must-revalidate
+cross-origin-embedder-policy: require-corp
+cross-origin-opener-policy: same-origin
+## prod wasm sha256 + magic
+60c37161e9c735883e4385540f11952995e9515465fc353df24c463398cd1742
+ 00 61 73 6d 01 00 00 00
+## import section raw bytes (sec 2, first 24B)
+01 0d 2e 2f 69 6e 6b 6f 73 5f 62 67 2e 6a 73 00 7f 07 21 5f 5f 77 62 67
+-> count=1, module='./inkos_bg.js', field='' then 0x7f = compact-imports group encoding (not MVP import kind)
+## target_features custom section
+compact-imports
+custom-page-sizes
+memory64
+multibyte
+## engine validation
+node22/V8 WebAssembly.validate: false
+## playwright chromium on prod
+== chromium {"coi":true,"diag":{"isolated":true,"arch64":true,"pageSize":65536,"totalPages":4096,"activeRamPages":2048,"swapPages":2048,"wasmLoaded":false,"wasiCompiled":false,"workerReady":false,"gpuMode":"canvas2d","lastError":"wasm init: WebAssembly.instantiateStreaming(): Invalid import kind 127, enable with --wasm-compact-imports @+299"},"toast":"","title":"InkOS — Arch / CachyOS Desktop"}
+webkit LAUNCH FAIL browserType.launch: Executable doesn't exist at /opt/pw-browsers/webkit-2359/pw_run.sh
+## webkit: playwright webkit not installed in this env (/opt/pw-browsers has chromium only)

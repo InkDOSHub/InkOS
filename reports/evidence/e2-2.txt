@@ -1,0 +1,12 @@
+✔ round-trip (multi-chunk, exact multiple, empty) (911.001622ms)
+✔ header: version, kdf, iterations >= 600k, unique IV prefix and salt (186.965728ms)
+✔ wrong password is indistinguishable from corruption (190.46858ms)
+✔ 1-bit tamper anywhere after header fails (556.802764ms)
+✔ truncation (drop final record) and trailing bytes fail (336.619001ms)
+✔ chunk reordering fails (191.851139ms)
+✔ unsupported version is rejected clearly (92.537374ms)
+✔ session payload round-trip (manifest + files) (269.629594ms)
+# 210 MiB: ciphertext 220205228 B; encrypt peak 218.2 MiB (incl. ciphertext held for Blob); decrypt working set 0.0 MiB over blob
+✔ >200 MB round-trip with bounded memory (955.249692ms)
+ℹ pass 9
+ℹ fail 0

@@ -1,0 +1,8 @@
+dist/
+target/
+inkos/target/
+node_modules/
+graphify-out/
+*.wasm.opt
+bench/kernels/target/
+reports/evidence/screens/apps/

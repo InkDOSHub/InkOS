@@ -1,0 +1,14 @@
+✔ chromium: boot without errors, isolated, wasm loaded (322.566851ms)
+✔ chromium: icons, dock, native apps mount (2406.137496ms)
+✔ chromium: window drag, 8-way resize, minimize, maximize, close (1610.426129ms)
+✔ chromium: workspaces isolate windows (428.521946ms)
+✔ chromium: shell, cmd, finder, browser vfs:// (3143.715215ms)
+✔ chromium: .inkos freeze / wake through Shell (10237.813781ms)
+✔ chromium: OPFS swap integrity under forced eviction (625.807497ms)
+✔ chromium: InkBench device page runs and exports JSON (2669.091877ms)
+✔ chromium: Hub registry by reference, app iframe follows theme (1797.316644ms)
+✔ chromium: themes Latte/Mocha + screenshots (1386.097651ms)
+✔ chromium: offline reload keeps isolation (service worker) (469.682469ms)
+✔ chromium: mobile emulation (iPhone / iPad) layout (1836.175893ms)
+ℹ pass 12
+ℹ fail 0

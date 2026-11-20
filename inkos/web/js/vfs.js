@@ -355,31 +355,16 @@ class VirtualFileSystem {
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
 
+  // Opens a Hub app and hands it the file via protocol v1 (inkos-vfs-file),
+  // with an explicit target origin (see js/appload.js and docs/PROTOCOL.md).
   async serveToHubApp(filePath, appId, openAppFn) {
     const rec = await this._idbGet(filePath);
     if (!rec || rec.type !== "file") return;
     const bytes = rec.data ? new Uint8Array(rec.data) : new Uint8Array(0);
     const mime = rec.mime || guessMime(rec.name);
-    if (typeof openAppFn === "function") {
-      await openAppFn(appId);
-    }
-    const payload = {
-      type: "inkos-vfs-file",
-      appId,
-      path: rec.path,
-      name: rec.name,
-      mime,
-      bytes,
-    };
-    setTimeout(() => {
-      const frames = document.querySelectorAll("iframe");
-      for (const fr of frames) {
-        try {
-          fr.contentWindow?.postMessage(payload, "*");
-        } catch (_) {}
-      }
-    }, 250);
+    if (typeof openAppFn === "function") await openAppFn(appId, { name: rec.name, mime, bytes });
   }
+
 }
 
 export const vfs = new VirtualFileSystem();

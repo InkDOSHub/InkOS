@@ -1,0 +1,13 @@
+# E1.2 root cause reproduction 2026-11-20T08:08:56Z
+binaryen: wasm-opt version 132 (version_132)
+## same input wasm (fresh wasm-pack, no opt):
+verify-wasm: ok (101469 bytes, 7 imports [function])
+verify-wasm: wasm-tools validate (conservative features) ok
+## old pipeline: wasm-opt -O3 --all-features --strip-debug
+verify-wasm: engine rejected module: WebAssembly.compile(): unknown import kind 0x7f @+284
+rc=1
+## fixed pipeline: explicit MVP+default features, --strip-target-features
+verify-wasm: ok (74003 bytes, 7 imports [function])
+verify-wasm: wasm-tools validate (conservative features) ok
+rc=0
+## conclusion: --all-features (present since first commit fdc4674 of scripts/build.sh) lets binaryen>=v12x emit compact-imports encoding (0x7f). Safari: "can't get 0th Import's kind"; V8: "unknown import kind 0x7f". wasm-pack's own wasm-opt step also disabled (Cargo metadata) so only the controlled step runs.

@@ -1,0 +1,3 @@
+{"JSHeapUsedMiB":"1.5","JSHeapTotalMiB":"2.8","poolMiB":16,"wasmBytes":[84468],"bootMs":38,"profile":"mt","nodes":412}
+prod (pre-fix) for comparison:
+kernel-bridge.js allocated SAB 4096 pages = 256 MiB at boot when deviceMemory>=8 (code read + diag totalPages=4096 in evidence/e1-1.txt)

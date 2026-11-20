@@ -1,249 +1,21 @@
 <!doctype html>
-<html lang="pt-PT" data-theme="cachy-dark">
+<html lang="pt-PT" data-theme="mocha">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0b0e14">
+  <meta name="theme-color" content="#111117">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>InkOS — Arch / CachyOS Desktop</title>
+  <title>InkOS — COSMIC Desktop</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./usr/share/themes/arch-cachy.css">
-  <style>
-    :root {
-      --bg: #0b0e14;
-      --panel: rgba(20, 25, 35, 0.88);
-      --panel-solid: #141923;
-      --surface: #1b2230;
-      --text: #e6edf7;
-      --muted: #94a3b8;
-      --border: rgba(255, 255, 255, 0.12);
-      --accent: #7aa2f7;
-    }
-    html[data-theme="cachy-light"] {
-      --bg: #eef2f7;
-      --panel: rgba(255, 255, 255, 0.9);
-      --panel-solid: #ffffff;
-      --surface: #e2e8f0;
-      --text: #0f172a;
-      --muted: #475569;
-      --border: rgba(15, 23, 42, 0.14);
-      --accent: #2563eb;
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
-    body {
-      display: flex;
-      flex-direction: column;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-    .topbar {
-      height: 40px;
-      min-height: 40px;
-      padding: 0 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      z-index: 30;
-    }
-    .topbar-left, .topbar-right, .topbar-center {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .top-pill, .mac-light {
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 4px 10px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .badge-iso {
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: rgba(122, 162, 247, 0.16);
-      color: var(--accent);
-      border: 1px solid rgba(122, 162, 247, 0.3);
-      white-space: nowrap;
-    }
-    .desktop {
-      position: relative;
-      flex: 1;
-      min-height: 0;
-      width: 100%;
-      background:
-        radial-gradient(circle at 20% 20%, rgba(122, 162, 247, 0.14), transparent 45%),
-        radial-gradient(circle at 80% 75%, rgba(187, 154, 247, 0.12), transparent 45%),
-        var(--bg);
-      overflow: hidden;
-    }
-    #framebuffer {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      display: block;
-      pointer-events: none;
-    }
-    .launcher-overlay {
-      position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(680px, calc(100% - 24px));
-      max-height: calc(100% - 32px);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 14px;
-      border-radius: 14px;
-      background: var(--panel-solid);
-      border: 1px solid var(--border);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
-      z-index: 40;
-    }
-    .launcher-overlay[hidden] { display: none; }
-    .launcher-search {
-      width: 100%;
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-size: 13px;
-    }
-    #app-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      gap: 8px;
-      overflow: auto;
-    }
-    .modifier-bar {
-      display: none;
-      flex-wrap: wrap;
-      gap: 6px;
-      padding: 6px 10px;
-      background: var(--panel-solid);
-      border-top: 1px solid var(--border);
-      z-index: 25;
-    }
-    .modifier-bar.open { display: flex; }
-    .modifier-bar button {
-      padding: 5px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-size: 12px;
-    }
-    .dock-wrap {
-      display: flex;
-      justify-content: center;
-      padding: 6px 10px 10px;
-      background: transparent;
-      z-index: 30;
-    }
-    .dock {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 14px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      overflow-x: auto;
-      max-width: 100%;
-    }
-    .dock-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-      padding: 6px 10px;
-      border: 1px solid transparent;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--text);
-      font-size: 11px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .dock-item.focused, .dock-item:hover {
-      background: var(--surface);
-      border-color: var(--border);
-    }
-    .dock-sep {
-      width: 1px;
-      height: 28px;
-      background: var(--border);
-      margin: 0 2px;
-    }
-    .win {
-      position: absolute;
-      display: flex;
-      flex-direction: column;
-      background: var(--panel-solid);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
-      overflow: hidden;
-    }
-    .win-titlebar {
-      height: 36px;
-      padding: 0 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      cursor: grab;
-      user-select: none;
-    }
-    .win-body {
-      flex: 1;
-      min-height: 0;
-      overflow: auto;
-    }
-    #inkos-toast {
-      position: fixed;
-      right: 12px;
-      bottom: 72px;
-      max-width: 340px;
-      padding: 8px 12px;
-      border-radius: 10px;
-      background: rgba(243, 139, 168, 0.16);
-      border: 1px solid rgba(243, 139, 168, 0.45);
-      color: var(--text);
-      font-size: 11.5px;
-      z-index: 60;
-      display: none;
-    }
-  </style>
+  <link rel="stylesheet" href="./theme/catppuccin.css">
 </head>
 <body>
   <header class="topbar" role="banner">
     <div class="topbar-left">
-      <button id="top-apps-btn" class="top-pill" type="button">Applications</button>
-      <strong style="margin-left:4px;font-size:13px;">InkOS</strong>
+      <button id="ws-toggle" class="top-pill" type="button" aria-label="Workspaces"><span class="lbl-long">Workspaces</span><span class="lbl-short">WS</span></button>
+      <button id="top-apps-btn" class="top-pill" type="button" aria-label="Applications"><span class="lbl-long">Applications</span><span class="lbl-short">Apps</span></button>
+      <strong class="brand" style="margin-left:4px;font-size:13px;">InkOS</strong>
     </div>
     <div class="topbar-center">
       <span id="clock" style="font-weight:600;">--:--</span>
@@ -251,16 +23,31 @@
     <div class="topbar-right">
       <span id="isolation-badge" class="badge-iso"></span>
       <button id="keys-toggle" class="top-pill" type="button" title="Teclas modificadoras">Keys</button>
-      <button id="theme-toggle" class="top-pill" type="button" aria-label="Alternar tema claro e escuro">◐</button>
+      <button id="theme-toggle" class="top-pill" type="button" aria-label="Alternar tema claro e escuro">Tema</button>
     </div>
   </header>
+
+  <aside id="workspace-rail" class="workspace-rail" aria-label="Workspaces">
+    <button class="ws-card active" data-ws="1" type="button">
+      <strong>Workspace 1</strong>
+      <span class="ws-count" id="ws-count-1">0 janelas</span>
+    </button>
+    <button class="ws-card" data-ws="2" type="button">
+      <strong>Workspace 2</strong>
+      <span class="ws-count" id="ws-count-2">0 janelas</span>
+    </button>
+    <button class="ws-card" data-ws="3" type="button">
+      <strong>Workspace 3</strong>
+      <span class="ws-count" id="ws-count-3">0 janelas</span>
+    </button>
+  </aside>
 
   <main id="desktop" class="desktop" aria-label="InkOS desktop">
     <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
     <section class="launcher-overlay" id="launcher-window" hidden aria-label="Applications Launcher">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <strong>Applications — InkDOS Hub &amp; Nativos</strong>
-        <button id="launcher-close" class="mac-light close" type="button" aria-label="Fechar" style="color:var(--text);">×</button>
+        <button id="launcher-close" class="mac-light close" type="button" aria-label="Fechar" style="color:rgba(0,0,0,.72);">×</button>
       </div>
       <input id="launcher-search" class="launcher-search" type="search" placeholder="Type to search apps..." autocomplete="off">
       <div id="app-grid"></div>
@@ -283,8 +70,6 @@
     <nav id="dock" class="dock" aria-label="Dock de aplicativos"></nav>
   </div>
 
-  <div id="inkos-toast" role="status" aria-live="polite"></div>
-
   <script type="module">
     const desktopEl = document.querySelector("#desktop");
     const dockEl = document.querySelector("#dock");
@@ -292,28 +77,10 @@
     const launcherGrid = document.querySelector("#app-grid");
     const launcherSearch = document.querySelector("#launcher-search");
     const badge = document.querySelector("#isolation-badge");
-    const toastEl = document.querySelector("#inkos-toast");
     badge.textContent = window.crossOriginIsolated ? "SAB • JIT Ativo" : "Modo Compatibilidade";
 
-    const showToast = (msg) => {
-      if (!toastEl || !msg) return;
-      toastEl.textContent = String(msg);
-      toastEl.style.display = "block";
-      clearTimeout(showToast._t);
-      showToast._t = setTimeout(() => {
-        toastEl.style.display = "none";
-      }, 6000);
-    };
-
-    window.addEventListener("error", (ev) => {
-      showToast(ev.message || "Erro no script");
-    });
-    window.addEventListener("unhandledrejection", (ev) => {
-      showToast(ev.reason?.message || String(ev.reason || "Promessa rejeitada"));
-    });
-
     const svgIcon = (id, size = 20) =>
-      `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./usr/share/icons/icons.svg#${id}"></use></svg>`;
+      `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
 
     const updateClock = () => {
       document.querySelector("#clock").textContent = new Intl.DateTimeFormat(undefined, {
@@ -325,89 +92,65 @@
     updateClock();
     setInterval(updateClock, 15000);
 
-    const modBar = document.querySelector("#modifier-bar");
-    document.querySelector("#keys-toggle").addEventListener("click", () => {
-      modBar.classList.toggle("open");
-    });
-    modBar.querySelectorAll("button[data-key]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const active = document.activeElement;
-        if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
-          active.dispatchEvent(new KeyboardEvent("keydown", { key: btn.dataset.key, bubbles: true }));
-        }
-      });
+    const wsRail = document.querySelector("#workspace-rail");
+    document.querySelector("#ws-toggle").addEventListener("click", () => {
+      wsRail.classList.toggle("open");
     });
 
-    const tryImportFirst = async (paths) => {
-      let lastErr = null;
-      for (const p of paths) {
-        try {
-          return await import(p);
-        } catch (e) {
-          lastErr = e;
-        }
-      }
-      throw lastErr || new Error(`Falha ao importar: ${paths.join(", ")}`);
-    };
-
-    let wmMod = null;
-    let appload = null;
-    let mobileMod = null;
-
-    try {
-      [wmMod, appload, mobileMod] = await Promise.all([
-        tryImportFirst(["./sys/wm.js", "./js/wm.js"]).catch(() => null),
-        tryImportFirst(["./sys/appload.js", "./js/appload.js"]).catch(() => null),
-        tryImportFirst(["./sys/mobile.js", "./js/mobile.js"]).catch(() => null),
-      ]);
-    } catch (e) {
-      showToast(e?.message || "Erro ao carregar módulos base");
-    }
+    const [{ WindowManager }, appload] = await Promise.all([
+      import("./js/wm.js"),
+      import("./js/appload.js"),
+    ]);
 
     let vfs = null;
     try {
-      const vfsMod = await tryImportFirst(["./sys/vfs.js", "./js/vfs.js"]);
+      const vfsMod = await import("./js/vfs.js");
       vfs = vfsMod.vfs;
-      await vfs.init?.();
-    } catch (_) {}
+      await vfs.init();
+    } catch (e) {
+      console.warn("[InkOS] vfs.js ausente ou falhou:", e);
+    }
 
     let settingsMod = null;
     try {
-      settingsMod = await tryImportFirst(["./usr/bin/settings.js", "./js/apps/settings.js"]);
-      settingsMod.applyPrefs?.();
-    } catch (_) {}
+      settingsMod = await import("./js/apps/settings.js");
+      settingsMod.applyPrefs();
+    } catch (e) {
+      console.warn("[InkOS] settings.js ausente ou falhou:", e);
+    }
 
-    let wm = null;
+    let wm;
     const renderDock = (wins = []) => {
       dockEl.innerHTML = "";
       const pinned = [
         { id: "launcher", label: "Apps", iconId: "i-apps", action: () => toggleLauncher() },
-        { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload?.openApp?.("finder", desktopEl) },
-        { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload?.openApp?.("browser", desktopEl) },
-        { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload?.openApp?.("shell", desktopEl) },
-        { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload?.openApp?.("cmdexe", desktopEl) },
-        { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload?.openApp?.("monitor", desktopEl) },
-        { id: "settings", label: "Ajustes", iconId: "i-settings", action: () => appload?.openApp?.("settings", desktopEl) },
+        { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload.openApp("finder", desktopEl) },
+        { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload.openApp("browser", desktopEl) },
+        { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload.openApp("shell", desktopEl) },
+        { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload.openApp("cmdexe", desktopEl) },
+        { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload.openApp("monitor", desktopEl) },
+        { id: "settings", label: "Ajustes", iconId: "i-settings", action: () => appload.openApp("settings", desktopEl) },
       ];
       for (const p of pinned) {
         const b = document.createElement("button");
         b.type = "button";
         b.className = "dock-item";
-        const runningMatch = wins.find((w) => w.id === `bin-${p.id}` || w.id === `hub-${p.id}`);
+        const runningMatch = wins.find((w) => w.id === `native-${p.id}` || w.id === `hub-${p.id}`);
         if (runningMatch) b.classList.add("running");
         if (runningMatch?.focused) b.classList.add("focused");
+        if (runningMatch) b.dataset.winId = runningMatch.id;
         b.innerHTML = `${svgIcon(p.iconId, 20)}<span>${p.label}</span>`;
         b.onclick = () => {
-          if (wm && runningMatch && runningMatch.focused && !runningMatch.minimized) {
+          if (runningMatch && runningMatch.focused && !runningMatch.minimized) {
             wm.minimize(runningMatch.id);
           } else {
-            p.action?.();
+            p.action();
           }
         };
         dockEl.append(b);
       }
 
-      const openWins = wins.filter((w) => !/^bin-(finder|browser|shell|cmdexe|monitor|settings)$/.test(w.id));
+      const openWins = wins.filter((w) => !/^native-(finder|browser|shell|cmdexe|monitor|settings)$/.test(w.id));
       if (openWins.length > 0) {
         const sep = document.createElement("div");
         sep.className = "dock-sep";
@@ -417,197 +160,142 @@
           b.type = "button";
           b.className = `dock-item running ${w.focused ? "focused" : ""}`;
           b.title = w.title;
+          b.dataset.winId = w.id;
           const shortTitle = w.title.length > 12 ? w.title.slice(0, 11) + "…" : w.title;
           b.innerHTML = `${svgIcon("i-window", 18)}<span>${shortTitle}</span>`;
           b.onclick = () => {
-            if (!wm) return;
             if (w.focused && !w.minimized) wm.minimize(w.id);
             else wm.focus(w.id);
           };
           dockEl.append(b);
         }
       }
+
+      for (let i = 1; i <= 3; i++) {
+        const el = document.querySelector(`#ws-count-${i}`);
+        if (el) {
+          const c = wins.filter((x) => x.workspace === i).length;
+          el.textContent = `${c} ${c === 1 ? "janela" : "janelas"}`;
+        }
+      }
     };
 
-    if (wmMod?.WindowManager) {
-      wm = new wmMod.WindowManager(desktopEl, { onChange: renderDock });
-      appload?.bindWindowManager?.(wm);
-    }
-    mobileMod?.installMobileHelpers?.({ desktopEl, dockEl, launcherWin, wm });
+    wm = new WindowManager(desktopEl, { onChange: renderDock });
+    import("./js/contextmenu.js").then((cm) => {
+      cm.installContextMenu();
+      cm.setContextMenu(desktopEl, (e) => {
+        if (e.target.closest(".window")) return [];
+        const open = (id) => () => appload.openApp(id, desktopEl);
+        return [
+          { label: "Aplicativos…", action: () => toggleLauncher() },
+          { label: "Finder", action: open("finder") },
+          { label: "Terminal", action: open("shell") },
+          "-",
+          { label: "Alternar tema", action: () => document.querySelector("#theme-toggle").click() },
+          { label: "Ajustes", action: open("settings") },
+        ];
+      });
+      cm.setContextMenu(dockEl, (e) => {
+        const item = e.target.closest(".dock-item");
+        const winId = item?.dataset.winId;
+        if (!winId || !wm.windows.has(winId)) return item ? [{ label: "Abrir", action: () => item.click() }] : [];
+        const w = wm.windows.get(winId);
+        return [
+          { label: w.minimized ? "Mostrar" : "Minimizar", action: () => (w.minimized ? wm.focus(winId) : wm.minimize(winId)) },
+          { label: "Fechar", danger: true, action: () => wm.close(winId) },
+        ];
+      });
+    }).catch((e) => console.warn("[InkOS] contextmenu.js:", e));
+    import("./js/mobile.js").then((m) => m.initMobileSupport?.()).catch((e) => console.warn("[InkOS] mobile.js:", e));
+    appload.bindWindowManager(wm);
     renderDock([]);
 
-    const lazyBin = (paths, exportName, fallbackMsg) => async (el, ctx) => {
+    wsRail.querySelectorAll(".ws-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const n = Number(card.dataset.ws || 1);
+        wm.setWorkspace(n);
+        wsRail.querySelectorAll(".ws-card").forEach((c) => c.classList.toggle("active", c === card));
+      });
+    });
+
+    const lazyNative = (path, exportName, fallbackMsg) => async (el, ctx) => {
       try {
-        const mod = await tryImportFirst(paths);
+        const mod = await import(path);
         return await mod[exportName](el, {
           ...ctx,
           vfs,
           wm,
-          closeApp: (id) => appload?.closeApp?.(id),
-          syncTheme: appload?.syncTheme,
+          closeApp: (id) => appload.closeApp(id),
+          openApp: (id, desk, c) => appload.openApp(id, desk || desktopEl, c),
+          syncTheme: appload.syncTheme,
         });
       } catch (e) {
         el.innerHTML = `<div style="padding:16px;font-size:13px;line-height:1.5;">
-          <strong>Módulo pendente:</strong> <code>${paths.join(" / ")}</code><br>
+          <strong>Módulo pendente:</strong> <code>${path}</code><br>
           <span style="color:var(--muted);">${fallbackMsg} (${e.message})</span>
         </div>`;
       }
     };
 
-    if (appload?.registerSystemBin) {
-      appload.registerSystemBin("finder", {
-        title: "Finder — Memória Interna InkOS",
-        width: 820,
-        height: 520,
-        mount: lazyBin(["./usr/bin/finder.js", "./js/apps/finder.js"], "mountFinder", "Ficheiro de finder em falta."),
-      });
-      appload.registerSystemBin("browser", {
-        title: "InkBrowser",
-        width: 900,
-        height: 600,
-        mount: lazyBin(["./usr/bin/browser.js", "./js/apps/browser.js"], "mountBrowser", "Ficheiro de browser em falta."),
-      });
-      appload.registerSystemBin("shell", {
-        title: "Alpine Linux — InkShell",
-        width: 780,
-        height: 480,
-        mount: lazyBin(["./usr/bin/terminal.js", "./js/apps/terminal.js"], "mountTerminal", "Ficheiro de terminal em falta."),
-      });
-      appload.registerSystemBin("cmdexe", {
-        title: "CMD & Instalador .EXE",
-        width: 800,
-        height: 520,
-        mount: lazyBin(["./usr/bin/cmd-exe.js", "./js/apps/cmd-exe.js"], "mountCmdExe", "Ficheiro de cmd-exe em falta."),
-      });
-      appload.registerSystemBin("monitor", {
-        title: "Monitor de Sistema",
-        width: 680,
-        height: 500,
-        mount: lazyBin(["./usr/bin/monitor.js", "./js/apps/monitor.js"], "mountMonitor", "Ficheiro de monitor em falta."),
-      });
-      appload.registerSystemBin("settings", {
-        title: "Configurações & Planos de Fundo",
-        width: 740,
-        height: 500,
-        mount: lazyBin(["./usr/bin/settings.js", "./js/apps/settings.js"], "mountSettings", "Ficheiro de settings em falta."),
-      });
-    }
+    appload.registerNativeApp("finder", {
+      title: "Finder — Memória Interna InkOS",
+      width: 820,
+      height: 520,
+      mount: lazyNative("./js/apps/finder.js", "mountFinder", "Crie inkos/web/js/apps/finder.js no repositório."),
+    });
+    appload.registerNativeApp("browser", {
+      title: "InkBrowser",
+      width: 900,
+      height: 600,
+      mount: lazyNative("./js/apps/browser.js", "mountBrowser", "Crie inkos/web/js/apps/browser.js no repositório."),
+    });
+    appload.registerNativeApp("shell", {
+      title: "Alpine Linux — InkShell",
+      width: 780,
+      height: 480,
+      mount: lazyNative("./js/apps/shell.js", "mountShell", "Crie inkos/web/js/apps/shell.js no repositório."),
+    });
+    appload.registerNativeApp("cmdexe", {
+      title: "CMD & Instalador .EXE",
+      width: 800,
+      height: 520,
+      mount: lazyNative("./js/apps/cmd-exe.js", "mountCmdExe", "Crie inkos/web/js/apps/cmd-exe.js no repositório."),
+    });
+    appload.registerNativeApp("monitor", {
+      title: "Monitor de Sistema",
+      width: 680,
+      height: 500,
+      mount: lazyNative("./js/apps/monitor.js", "mountMonitor", "Crie inkos/web/js/apps/monitor.js no repositório."),
+    });
+    appload.registerNativeApp("settings", {
+      title: "Configurações & Planos de Fundo",
+      width: 740,
+      height: 500,
+      mount: lazyNative("./js/apps/settings.js", "mountSettings", "Crie inkos/web/js/apps/settings.js no repositório."),
+    });
 
-    (async () => {
-      const diag = {
-        isolated: Boolean(window.crossOriginIsolated),
-        wasmLoaded: false,
-        wasiCompiled: false,
-        workerReady: false,
-        lastError: null,
-      };
-      window.inkOS = {
-        diag,
-        vfs,
-        openApp: appload?.openApp,
-        closeApp: appload?.closeApp,
-      };
-
-      if (!window.crossOriginIsolated) {
-        diag.lastError = "crossOriginIsolated=false";
-        showToast("crossOriginIsolated desativado");
-        return;
-      }
-
-      let mod = null;
-      try {
-        const bridgeMod = await import("./boot/kernel-bridge.js").catch(() => null);
-        if (bridgeMod?.bootKernel) {
-          const booted = await bridgeMod.bootKernel({ workerUrl: "./boot/swap.worker.js" });
-          Object.assign(diag, booted.diag || {});
-          Object.assign(window.inkOS, booted);
-          return;
-        }
-        mod = await import("./pkg/inkos.js");
-        if (typeof mod.default === "function") {
-          await mod.default();
-        }
-        diag.wasmLoaded = true;
-      } catch (e) {
-        diag.lastError = `wasm init: ${e?.message || e}`;
-        showToast(diag.lastError);
-        return;
-      }
-
-      const initialPages = 256;
-      const maxPages = 16384;
-      let memory = null;
-      try {
-        memory = new WebAssembly.Memory({
-          initial: initialPages,
-          maximum: maxPages,
-          shared: true,
-        });
-        window.inkOS.memory = memory;
-      } catch (e) {
-        diag.lastError = `memory: ${e?.message || e}`;
-        showToast(diag.lastError);
-        return;
-      }
-
-      let soc = null;
-      if (typeof mod.InkSoC === "function") {
-        try {
-          soc = new mod.InkSoC(initialPages);
-          soc.bind_shared_memory?.(memory.buffer);
-          window.inkOS.soc = soc;
-        } catch (e) {
-          diag.lastError = `InkSoC ctor: ${e?.message || e}`;
-          showToast(diag.lastError);
-        }
-      }
-
-      if (soc && typeof soc.emit_wasi_module === "function") {
-        try {
-          const wasiMod = soc.emit_wasi_module();
-          if (wasiMod) {
-            await WebAssembly.compile(wasiMod);
-            diag.wasiCompiled = true;
-          }
-        } catch (e) {
-          diag.lastError = `wasi compile: ${e?.message || e}`;
-          showToast(diag.lastError);
-        }
-      }
-
-      try {
-        const control = new SharedArrayBuffer(4096);
-        const worker = new Worker("./boot/swap.worker.js", { type: "module" });
-        worker.postMessage({
-          type: "init",
-          pageSize: 65536,
-          memory,
-          control,
-        });
-        window.inkOS.control = control;
-        window.inkOS.worker = worker;
-        diag.workerReady = true;
-      } catch (e) {
-        diag.lastError = `swap worker: ${e?.message || e}`;
-        showToast(diag.lastError);
-      }
-    })();
+    window.inkOS = { diag: { booting: true }, vfs, openApp: appload.openApp, closeApp: appload.closeApp };
+    import("./js/kernel.js")
+      .then(({ bootKernel }) => bootKernel({ pkgUrl: "../pkg/inkos.js", workerUrl: "./js/swap.worker.js" }))
+      .then((booted) => {
+        Object.assign(window.inkOS, booted);
+        badge.textContent = booted.diag.profile === "mt" ? "SAB • mt" : "Compat • st";
+        badge.title = booted.diag.profileReason || "crossOriginIsolated + shared memory ok";
+        window.dispatchEvent(new CustomEvent("inkos:booted", { detail: booted.diag }));
+      })
+      .catch((e) => console.error("[InkOS] kernel boot failed:", e));
 
     function toggleLauncher(force) {
-      if (!appload?.mountLauncher) {
-        showToast("Lançador indisponível (appload não carregou)");
-        return;
-      }
       const next = typeof force === "boolean" ? force : !launcherWin.hidden;
       launcherWin.hidden = next;
       if (!launcherWin.hidden) {
-        appload.mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch((e) => showToast(e.message));
+        appload.mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
         launcherSearch.focus();
       }
     }
 
     launcherSearch.addEventListener("input", () => {
-      appload?.mountLauncher?.(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch((e) => showToast(e.message));
+      appload.mountLauncher(launcherGrid, desktopEl, { filterText: launcherSearch.value }).catch(console.error);
     });
     launcherGrid.addEventListener("click", (e) => {
       if (e.target.closest("button")) toggleLauncher(true);
@@ -618,14 +306,16 @@
 
     document.querySelector("#theme-toggle").addEventListener("click", () => {
       const cur = document.documentElement.dataset.theme;
-      const next = cur === "cachy-light" ? "cachy-dark" : "cachy-light";
+      const next = cur === "latte" ? "mocha" : "latte";
       document.documentElement.dataset.theme = next;
       if (settingsMod?.savePrefs) settingsMod.savePrefs({ theme: next });
-      appload?.syncTheme?.();
+      appload.syncTheme();
     });
 
+    import("./js/mode.js").then((m) => m.applyLayoutMode(m.currentMode(), { openLauncher: () => toggleLauncher(false) }));
+
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(() => {});
+      navigator.serviceWorker.register("./sw.js").catch((e) => console.warn("[InkOS] sw register:", e));
     }
   </script>
 </body>

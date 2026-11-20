@@ -1,0 +1,6 @@
+# E5.2/E5.3 SW + pacote 2026-11-20T08:48:42Z
+dist: 396K, 35 arquivos, wasm kernel 84468 B, bench wasm 28233 B
+const VERSION = "a5bcd1ce7814";
+precache: 34 entradas, gerado por scripts/gen-sw.mjs (hash do dist)
+E2E 'offline SW reload' passa (evidence/e5-5-e2e.txt)
+workflows: deploy.yml (push main → descompacta *.zip e faz commit/push em main, depois GH Pages) e make-zip.yml (manual, gera zip de dumps .txt e push em main). não alterados (D13); risco anotado.

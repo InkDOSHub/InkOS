@@ -116,9 +116,11 @@ html, body {
   gap: 6px;
 }
 
+@media (hover: hover) {
 .top-pill:hover {
   background: var(--surface);
   border-color: var(--border);
+}
 }
 
 .top-pill.active {
@@ -288,15 +290,19 @@ html, body {
   justify-content: center;
 }
 
+@media (hover: hover) {
 .win-btn:hover {
   background: var(--surface-hover);
   border-color: var(--border-strong);
 }
+}
 
+@media (hover: hover) {
 .win-btn.close:hover {
   background: var(--danger);
   border-color: var(--danger);
   color: #fff;
+}
 }
 
 .window-body {
@@ -314,14 +320,16 @@ html, body {
   z-index: 20;
   touch-action: none;
 }
-.resize-n { top: -3px; left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
-.resize-s { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
-.resize-w { left: -3px; top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
-.resize-e { right: -3px; top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
-.resize-nw { top: -4px; left: -4px; width: 12px; height: 12px; cursor: nwse-resize; }
-.resize-ne { top: -4px; right: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
-.resize-sw { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
-.resize-se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: nwse-resize; }
+/* Handles sit inside the border box: .window clips overflow, so handles
+   placed outside the edge were almost impossible to grab. */
+.resize-n { top: 0; left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+.resize-s { bottom: 0; left: 14px; right: 14px; height: 8px; cursor: ns-resize; }
+.resize-w { left: 0; top: 14px; bottom: 14px; width: 8px; cursor: ew-resize; }
+.resize-e { right: 0; top: 14px; bottom: 14px; width: 8px; cursor: ew-resize; }
+.resize-nw { top: 0; left: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+.resize-ne { top: 0; right: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+.resize-sw { bottom: 0; left: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+.resize-se { bottom: 0; right: 0; width: 14px; height: 14px; cursor: nwse-resize; }
 
 /* App Launcher overlay estilo COSMIC */
 .launcher-overlay {
@@ -451,10 +459,12 @@ html, body {
   transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease;
 }
 
+@media (hover: hover) {
 .dock-item:hover {
   transform: translateY(-3px);
   background: var(--surface-hover);
   border-color: var(--border-strong);
+}
 }
 
 .dock-item.running::after {
@@ -550,8 +560,10 @@ html, body {
   transition: filter 0.12s ease, color 0.12s ease;
 }
 
+@media (hover: hover) {
 .mac-lights:hover .mac-light {
   color: rgba(0, 0, 0, 0.72);
+}
 }
 
 .mac-light.close { background: #ff5f57; }
@@ -562,3 +574,92 @@ html, body {
   background: rgba(140, 144, 158, 0.38);
   border-color: transparent;
 }
+
+/* ---- Touch / mobile (E2.3) ---- */
+.lbl-short { display: none; }
+.modifier-bar {
+  bottom: calc(72px + var(--kb-inset, 0px));
+}
+.modifier-bar button.mod-on { background: var(--accent-soft); border-color: var(--accent); }
+.modifier-bar button.mod-lock { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.window-body { touch-action: pan-x pan-y; overscroll-behavior: contain; }
+html, body { overscroll-behavior: none; }
+.is-touch .top-pill,
+.is-touch .modifier-bar button,
+.is-touch .dock-item { min-height: 44px; min-width: 44px; }
+.is-touch .mac-light { position: relative; width: 16px; height: 16px; }
+.is-touch .mac-light::after { content: ""; position: absolute; inset: -14px; }
+.is-touch .mac-lights { gap: 22px; margin-right: 14px; }
+@media (max-width: 699px) {
+  .topbar { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); gap: 4px; }
+  .lbl-long, .topbar .brand, #isolation-badge { display: none; }
+  .lbl-short { display: inline; }
+  #clock { font-size: 12px; white-space: nowrap; }
+  .top-pill { padding: 4px 8px; }
+  .dock { gap: 4px; padding: 4px 6px; }
+  .dock-item span { display: none; }
+}
+@media (display-mode: fullscreen), (display-mode: standalone) {
+  .topbar { padding-top: env(safe-area-inset-top); }
+}
+.is-touch .topbar { height: auto; min-height: 52px; padding-top: 4px; padding-bottom: 4px; }
+@media (max-width: 699px) {
+  .modifier-bar {
+    left: 8px; right: 8px; transform: none;
+    flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+    bottom: calc(72px + var(--kb-inset, 0px)); margin-bottom: 0;
+  }
+  .modifier-bar button { flex: 0 0 auto; }
+  .kb-open .dock-wrap { display: none; }
+  .kb-open .modifier-bar { bottom: calc(4px + var(--kb-inset, 0px)); }
+}
+.is-touch .desktop { top: 52px; }
+@media (max-width: 699px) {
+  /* The desktop (and its windows, via WindowManager.fitAll) shrinks so the
+     modifier bar never covers the focused field. */
+  .mods-open .desktop { bottom: calc(132px + var(--kb-inset, 0px)); }
+}
+/* Hub mode (prepared seam, see docs/adr/ADR-modo-hub-desktop.md) */
+[data-mode="hub"] #ws-toggle { display: none; }
+
+/* Context menu (right click, two-finger tap, long press) */
+html { -webkit-touch-callout: none; }
+input, textarea, [contenteditable="true"] { -webkit-touch-callout: default; }
+.ctx-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 190px;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ctx-item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ctx-item:hover:not(:disabled),
+.ctx-item:focus-visible { background: var(--accent-soft); outline: none; }
+.ctx-item:disabled { color: var(--muted); opacity: 0.6; cursor: default; }
+.ctx-item.danger { color: var(--danger); }
+.ctx-sep { height: 1px; margin: 4px 6px; background: var(--border); }
+.is-touch .ctx-item { min-height: 44px; padding: 10px 14px; font-size: 15px; }
+
+/* Touch: no double-tap zoom (and no click delay); light icons always visible
+   because there is no hover. */
+html { touch-action: manipulation; }
+.is-touch .mac-light { color: rgba(0, 0, 0, 0.72); }
