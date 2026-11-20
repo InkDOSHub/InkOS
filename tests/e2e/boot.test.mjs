@@ -224,6 +224,42 @@ for (const name of wanted) {
     await ctx.close();
   });
 
+  test(`${name}: OPFS swap integrity under forced eviction`, async (t) => {
+    const b = browsers[name];
+    if (!b) return t.skip();
+    const { ctx, page, errors } = await bootPage(b);
+    const r = await page.evaluate(async () => {
+      const k = window.inkOS;
+      if (k.diag.swap !== "opfs") return { skipped: k.diag.swapReason };
+      const { Swap } = await import("./js/swap.js");
+      const sw = new Swap({ memory: k.memory, control: k.control, pager: new k.InkPager(8, 256) });
+      const PAGES = 64;
+      const sum = (off) => { const v = new Uint8Array(k.memory.buffer, off, 65536); let s = 0; for (let i = 0; i < v.length; i += 97) s = (s * 31 + v[i]) >>> 0; return s; };
+      const want = [];
+      for (let p = 0; p < PAGES; p++) {
+        const off = await sw.access(p);
+        const v = new Uint8Array(k.memory.buffer, off, 65536);
+        for (let i = 0; i < v.length; i += 97) v[i] = (p * 13 + i) & 255;
+        want[p] = sum(off);
+      }
+      let bad = 0;
+      for (let round = 0; round < 3; round++) for (let p = PAGES - 1; p >= 0; p--) if (sum(await sw.access(p)) !== want[p]) bad++;
+      let x = 7;
+      for (let i = 0; i < 2000; i++) { x = (x * 1103515245 + 12345) >>> 0; const p = x % PAGES; if (sum(await sw.access(p)) !== want[p]) bad++; }
+      const st = sw.stats();
+      const maxBytes = k.memory.buffer.byteLength;
+      await sw.wipe();
+      return { bad, st, maxBytes, after: sw.stats() };
+    });
+    if (r.skipped) return t.skip(r.skipped);
+    assert.equal(r.bad, 0, "checksum mismatch after eviction");
+    assert.ok(r.st.resident <= 8 && r.st.swapped > 0, JSON.stringify(r.st));
+    assert.equal(r.after.swapFileBytes, 0);
+    assert.ok(r.maxBytes <= 32 * 1024 * 1024, `pool grew to ${r.maxBytes}`);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+
   test(`${name}: themes Latte/Mocha + screenshots`, async (t) => {
     const b = browsers[name];
     if (!b) return t.skip();

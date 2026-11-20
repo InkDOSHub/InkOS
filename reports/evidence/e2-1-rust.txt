@@ -1,0 +1,7 @@
+test paging::tests::clock_gives_second_chance ... ok
+test paging::tests::first_touch_uses_free_frames ... ok
+test paging::tests::release_and_reset ... ok
+test paging::tests::swap_slots_are_reused_and_capped ... ok
+test paging::tests::integrity_after_forced_eviction ... ok
+test paging::tests::stress_100k_random_accesses_stay_under_budget ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s

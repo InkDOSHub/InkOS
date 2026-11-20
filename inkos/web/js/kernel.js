@@ -15,6 +15,8 @@ export const PAGE_SIZE = 65536;
 export const INITIAL_POOL_PAGES = 256; // 16 MiB
 export const DEFAULT_MAX_POOL_PAGES = 8192; // 512 MiB
 export const FLAG_MAX_POOL_PAGES = 16384; // 1 GiB, flag only
+export const RESIDENT_FRAMES = 2048; // 128 MiB resident budget for swappable pages
+export const MAX_SWAP_PAGES = 8192; // 512 MiB swap file cap (worker also caps by quota)
 
 export function maxPoolPages(search = globalThis.location?.search || "") {
   const params = new URLSearchParams(search);
@@ -103,16 +105,28 @@ export async function bootKernel({ pkgUrl = "../pkg/inkos.js", workerUrl = "./js
           if (ev.data?.type === "ready") {
             diag.workerReady = true;
             diag.swapAvailable = Boolean(ev.data.hasOpfsSync);
+            diag.swapMaxPages = ev.data.maxSlots || 0;
             clearTimeout(timer);
             resolve();
           }
         });
-        result.worker.postMessage({ type: "init", pageSize: PAGE_SIZE, memory: result.memory, control: result.control });
+        result.worker.postMessage({ type: "init", pageSize: PAGE_SIZE, memory: result.memory, control: result.control, maxSlots: MAX_SWAP_PAGES });
       });
     } catch (e) {
       diag.lastError = `swap worker: ${e?.message || e}`;
       console.error("[InkOS] swap worker failed:", e);
     }
+  }
+
+  result.InkPager = mod.InkPager;
+  if (diag.swapAvailable && diag.swapMaxPages > 0) {
+    const { Swap } = await import("./swap.js");
+    const frames = Math.min(RESIDENT_FRAMES, maximum);
+    result.swap = new Swap({ memory: result.memory, control: result.control, pager: new mod.InkPager(frames, diag.swapMaxPages) });
+    diag.swap = "opfs";
+  } else {
+    diag.swap = "off";
+    diag.swapReason = diag.profile !== "mt" ? "perfil st" : "OPFS createSyncAccessHandle indisponível";
   }
 
   diag.bootMs = Math.round(performance.now() - t0);

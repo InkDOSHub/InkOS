@@ -105,12 +105,15 @@ export function mountMonitor(root, { wm, vfs, closeApp }) {
     }
 
     const wasmBytes = window.inkOS?.memory?.buffer?.byteLength || 0;
-    wasmEl.textContent = wasmBytes ? `Wasm SAB: ${(wasmBytes / 1048576).toFixed(0)} MiB` : "Kernel Wasm: Standby";
+    wasmEl.textContent = wasmBytes ? `Pool Wasm: ${(wasmBytes / 1048576).toFixed(0)} MiB` : "Kernel Wasm: Standby";
 
     const d = window.inkOS?.diag;
     if (d) {
       inkDiagEl.textContent =
-        `Wasm: ${d.wasmLoaded ? "OK" : "Falha"} • WASI: ${d.wasiCompiled ? "OK" : "Pendente"} • Worker: ${d.workerReady ? "OK" : "Off"}` +
+        `Perfil: ${d.profile || "?"}${d.profileReason ? ` (aviso: ${d.profileReason})` : ""} • ` +
+        `Wasm: ${d.wasmLoaded ? "OK" : "Falha"} • WASI: ${d.wasiCompiled ? "OK" : "Pendente"} • Worker: ${d.workerReady ? "OK" : "Off"} • ` +
+        `Swap: ${d.swap === "opfs" ? `OPFS (${(window.inkOS.swap?.stats().swapFileBytes / 1048576 || 0).toFixed(1)} MiB)` : `off${d.swapReason ? ` (${d.swapReason})` : ""}`} • ` +
+        `Pool: ${((d.poolBytes || 0) / 1048576).toFixed(0)}/${((d.poolMaxBytes || 0) / 1048576).toFixed(0)} MiB` +
         (d.lastError ? ` • Erro: ${d.lastError}` : "");
     } else {
       inkDiagEl.textContent = "Sem objeto window.inkOS.diag disponível.";

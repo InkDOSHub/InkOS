@@ -1,5 +1,7 @@
 use js_sys::{SharedArrayBuffer, Uint8Array};
 use wasm_bindgen::prelude::*;
+pub mod paging;
+
 use wasm_encoder::{
     CodeSection, ExportKind, ExportSection, Function, FunctionSection, ImportSection, Instruction,
     Module, TypeSection, ValType,
@@ -172,5 +174,54 @@ impl InkSoC {
         module.section(&code);
 
         Ok(module.finish())
+    }
+}
+
+/// JS-facing pager. `access` returns `[kind, frame, victim, to_slot, from_slot]`
+/// with kind 0 = hit, 1 = load, 2 = evict-then-load; absent fields are -1.
+#[wasm_bindgen]
+pub struct InkPager {
+    inner: paging::Pager,
+}
+
+#[wasm_bindgen]
+impl InkPager {
+    #[wasm_bindgen(constructor)]
+    pub fn new(frames: u32, max_swap_pages: u32) -> InkPager {
+        InkPager { inner: paging::Pager::new(frames, max_swap_pages) }
+    }
+
+    pub fn access(&mut self, vpage: u32) -> Result<Vec<f64>, JsValue> {
+        use paging::{Action, PagerError};
+        let opt = |o: Option<u32>| o.map(f64::from).unwrap_or(-1.0);
+        match self.inner.access(u64::from(vpage)) {
+            Ok(Action::Hit { frame }) => Ok(vec![0.0, f64::from(frame), -1.0, -1.0, -1.0]),
+            Ok(Action::Load { frame, from_slot }) => Ok(vec![1.0, f64::from(frame), -1.0, -1.0, opt(from_slot)]),
+            Ok(Action::EvictThenLoad { frame, victim, to_slot, from_slot }) => {
+                Ok(vec![2.0, f64::from(frame), victim as f64, f64::from(to_slot), opt(from_slot)])
+            }
+            Err(PagerError::SwapFull) => Err(JsValue::from_str("swap full")),
+            Err(PagerError::NoFrames) => Err(JsValue::from_str("no frames")),
+        }
+    }
+
+    pub fn release(&mut self, vpage: u32) {
+        self.inner.release(u64::from(vpage));
+    }
+
+    pub fn reset(&mut self) {
+        self.inner.reset();
+    }
+
+    pub fn resident_count(&self) -> u32 {
+        self.inner.resident_count()
+    }
+
+    pub fn swapped_count(&self) -> u32 {
+        self.inner.swapped_count()
+    }
+
+    pub fn swap_high_water(&self) -> u32 {
+        self.inner.swap_high_water()
     }
 }
