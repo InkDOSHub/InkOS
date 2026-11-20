@@ -178,8 +178,7 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
   root.querySelector("#f-import").onclick = () => fileInput.click();
   fileInput.onchange = async () => {
     for (const f of fileInput.files || []) {
-      const buf = new Uint8Array(await f.arrayBuffer());
-      await vfs.writeBytes(`${cwd}/${f.name}`, buf, f.type);
+      await vfs.writeFile(`${cwd}/${f.name}`, f, f.type);
     }
     fileInput.value = "";
     render();

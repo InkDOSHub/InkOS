@@ -252,6 +252,29 @@ class VirtualFileSystem {
     if (!silent) this._notifyChange();
   }
 
+  // Stores a Blob/File as it is: IndexedDB keeps it on disk, so a big file
+  // (an installer of hundreds of MB) is never read into memory.
+  async writeFile(filePath, blob, mime, { silent = false } = {}) {
+    const n = normalizePath(filePath);
+    if (n === "/") throw new Error("Caminho inválido para arquivo: /");
+    const parent = parentOf(n);
+    await this.mkdir(parent, { silent: true });
+    const resolvedMime = mime || blob.type || guessMime(baseNameOf(n));
+    const data = new Blob([blob], { type: resolvedMime });
+    await this._idbPut({
+      path: n,
+      name: baseNameOf(n),
+      parent,
+      type: "file",
+      size: data.size,
+      mime: resolvedMime,
+      data,
+      updatedAt: Date.now(),
+    });
+    await this._syncOpfsFile(n, data);
+    if (!silent) this._notifyChange();
+  }
+
   async writeText(filePath, text, opts = {}) {
     const enc = new TextEncoder().encode(String(text ?? ""));
     const mime = opts.mime || guessMime(baseNameOf(filePath));
@@ -261,7 +284,7 @@ class VirtualFileSystem {
   async readBytes(filePath) {
     const rec = await this._idbGet(filePath);
     if (!rec || rec.type !== "file" || !rec.data) return null;
-    return new Uint8Array(rec.data);
+    return rec.data instanceof Blob ? new Uint8Array(await rec.data.arrayBuffer()) : new Uint8Array(rec.data);
   }
 
   async readText(filePath) {
@@ -320,7 +343,7 @@ class VirtualFileSystem {
         updatedAt: Date.now(),
       });
       if (item.type === "file" && item.data) {
-        await this._syncOpfsFile(nextPath, new Uint8Array(item.data));
+        await this._syncOpfsFile(nextPath, item.data instanceof Blob ? item.data : new Uint8Array(item.data));
       } else if (item.type === "dir") {
         await this._syncOpfsDir(nextPath);
       }
@@ -333,8 +356,8 @@ class VirtualFileSystem {
   async toBlob(filePath) {
     const rec = await this._idbGet(filePath);
     if (!rec || rec.type !== "file") return null;
-    const u8 = rec.data ? new Uint8Array(rec.data) : new Uint8Array(0);
-    return new Blob([u8], { type: rec.mime || guessMime(rec.name) });
+    const data = rec.data instanceof Blob ? rec.data : rec.data ? new Uint8Array(rec.data) : new Uint8Array(0);
+    return new Blob([data], { type: rec.mime || guessMime(rec.name) });
   }
 
   async toObjectUrl(filePath) {
@@ -360,7 +383,8 @@ class VirtualFileSystem {
   async serveToHubApp(filePath, appId, openAppFn) {
     const rec = await this._idbGet(filePath);
     if (!rec || rec.type !== "file") return;
-    const bytes = rec.data ? new Uint8Array(rec.data) : new Uint8Array(0);
+    // a Blob goes by reference; only an old in-memory record is copied
+    const bytes = rec.data instanceof Blob ? rec.data : rec.data ? new Uint8Array(rec.data) : new Uint8Array(0);
     const mime = rec.mime || guessMime(rec.name);
     if (typeof openAppFn === "function") await openAppFn(appId, { name: rec.name, mime, bytes });
   }

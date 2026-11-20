@@ -18,6 +18,16 @@ test("validate rejects unknown types, wrong version, bad payloads", () => {
   assert.equal(validate(null), null);
 });
 
+test("inkos-vfs-file: a Blob is sent by reference, not transferred", () => {
+  const blob = new Blob([new Uint8Array(4)]);
+  const m = fileMessage("big.msi", "", blob);
+  assert.ok(validate(m));
+  assert.equal(m.data, blob);
+  const calls = [];
+  send({ postMessage: (...a) => calls.push(a) }, "https://hub.inkdos.workers.dev", m);
+  assert.deepEqual(calls[0][2], []);
+});
+
 test("send refuses wildcard origin and transfers file buffers", () => {
   const calls = [];
   const win = { postMessage: (...a) => calls.push(a) };
