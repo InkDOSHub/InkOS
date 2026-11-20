@@ -58,3 +58,9 @@ npm run serve        # serve dist/ em http://127.0.0.1:8787 com COOP/COEP
 ## Licença
 
 MIT. Dependências em `THIRD_PARTY_LICENSES.md`.
+
+## Limites conhecidos
+
+- Testado só no Chromium (headless). Safari, iPhone e iPad ainda precisam ser testados à mão: `reports/DEVICE-CHECKLIST.md`.
+- Alguns apps do Hub ainda não seguem o tema do InkOS (suíte InkDOS, Terminal, Wine). Receber arquivos do Finder depende do PR do Hub.
+- Deploy: o Cloudflare Pages publica cada branch como preview; produção atualiza com o merge em `main`.
