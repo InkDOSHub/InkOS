@@ -16,6 +16,11 @@ const SCHEMAS = {
   "inkos-ready": (m) => m.app === undefined || (typeof m.app === "string" && m.app.length <= 64),
   // An app names what it shows (the InkSoC engine: the program in front); InkOS puts it in the title bar.
   "inkos-title": (m) => typeof m.title === "string" && m.title.length > 0 && m.title.length <= 128,
+  // The InkSoC engine: the Windows programs installed on its drive C: (Apps shows them).
+  "inksoc-programs": (m) =>
+    Array.isArray(m.programs) && m.programs.length <= 200 &&
+    m.programs.every((p) => p && typeof p.name === "string" && p.name.length > 0 && p.name.length <= 128 &&
+      typeof p.path === "string" && p.path.length <= 260 && /^[A-Za-z]:\\[^\0-\x1f"*?<>|]*\.exe$/i.test(p.path)),
 };
 
 export function validate(msg) {

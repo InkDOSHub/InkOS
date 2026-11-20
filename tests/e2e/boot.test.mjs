@@ -298,11 +298,16 @@ for (const name of wanted) {
     const { ctx, page, errors } = await bootPage(b, { theme: "latte" });
     await dockClick(page, "Apps");
     await page.waitForSelector("#app-grid .app-tile[data-app-id='foto']", { timeout: 20000 });
-    const kinds = await page.$$eval("#app-grid .app-tile small", (els) => els.map((e) => e.textContent));
-    const hub = kinds.filter((k) => k.startsWith("Hub")).length;
+    // sections like Launchpad: InkOS, Programas Windows, InkDOS Hub
+    const sections = await page.$$eval("#app-grid .app-section", (els) => els.map((e) => e.textContent));
+    assert.deepEqual(sections.slice(0, 2), ["InkOS", "Programas Windows"]);
+    const hub = await page.$$eval("#app-grid .app-section", (els) => {
+      const h = els.find((e) => e.textContent.startsWith("InkDOS Hub"));
+      return h ? h.nextElementSibling.querySelectorAll(".app-tile").length : 0;
+    });
     // 25 in the registry; terminal and wine are InkOS apps of their own (Terminal, CMD/EXE)
     assert.ok(hub >= 23, `hub apps in launcher: ${hub}`);
-    if (!kinds.includes("Hub")) return t.skip("Hub offline: snapshot used");
+    if (!sections.includes("InkDOS Hub")) return t.skip("Hub offline: snapshot used");
     assert.equal(await page.locator(".window iframe").count(), 0, "no iframe before opening (lazy)");
     await page.click("#app-grid .app-tile[data-app-id='foto']");
     const fr = page.locator('.window[data-win-id="hub-foto"] iframe');

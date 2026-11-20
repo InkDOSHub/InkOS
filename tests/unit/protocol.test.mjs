@@ -48,3 +48,12 @@ test("inkos-title: a short title is valid, empty or long is dropped", () => {
   assert.equal(validate({ v: 1, type: "inkos-title", title: "x".repeat(129) }), null);
   assert.equal(validate({ v: 1, type: "inkos-title" }), null);
 });
+
+test("inksoc-programs: Windows paths to .exe only", () => {
+  const ok = { v: 1, type: "inksoc-programs", programs: [{ name: "7-Zip File Manager", path: "C:\\Program Files\\7-Zip\\7zFM.exe" }] };
+  assert.ok(validate(ok));
+  assert.ok(validate({ v: 1, type: "inksoc-programs", programs: [] }));
+  assert.equal(validate({ v: 1, type: "inksoc-programs", programs: [{ name: "x", path: "https://evil/x.exe" }] }), null);
+  assert.equal(validate({ v: 1, type: "inksoc-programs", programs: [{ name: "x", path: "C:\\a\"b.exe" }] }), null);
+  assert.equal(validate({ v: 1, type: "inksoc-programs", programs: [{ name: "", path: "C:\\a.exe" }] }), null);
+});

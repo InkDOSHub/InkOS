@@ -46,10 +46,10 @@
     <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
     <section class="launcher-overlay" id="launcher-window" hidden aria-label="Applications Launcher">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <strong>Applications — InkDOS Hub &amp; Nativos</strong>
+        <strong>Aplicativos</strong>
         <button id="launcher-close" class="mac-light close" type="button" aria-label="Fechar" style="color:rgba(0,0,0,.72);">×</button>
       </div>
-      <input id="launcher-search" class="launcher-search" type="search" placeholder="Type to search apps..." autocomplete="off">
+      <input id="launcher-search" class="launcher-search" type="search" placeholder="Buscar apps e programas" autocomplete="off">
       <div id="app-grid"></div>
     </section>
   </main>
@@ -268,18 +268,24 @@
     };
 
     appload.registerNativeApp("finder", {
+      label: "Finder",
+      iconId: "i-finder",
       title: "Finder — Memória Interna InkOS",
       width: 820,
       height: 520,
       mount: lazyNative("./js/apps/finder.js", "mountFinder", "Crie inkos/web/js/apps/finder.js no repositório."),
     });
     appload.registerNativeApp("browser", {
+      label: "Browser",
+      iconId: "i-browser",
       title: "InkBrowser",
       width: 900,
       height: 600,
       mount: lazyNative("./js/apps/browser.js", "mountBrowser", "Crie inkos/web/js/apps/browser.js no repositório."),
     });
     appload.registerNativeApp("vfs-shell", {
+      label: "Shell InkOS",
+      iconId: "i-terminal",
       title: "Shell InkOS — VFS e sessões",
       width: 760,
       height: 460,
@@ -289,6 +295,7 @@
     // InkShell runs Alpine Linux on the InkSoC engine; InkSoC runs cmd.exe or the .exe sent to it.
     appload.registerFrameApp("shell", {
       label: "Terminal",
+      iconId: "i-terminal",
       title: "Terminal — Alpine Linux",
       path: "InkShell/?inkos=1",
       width: 780,
@@ -296,6 +303,7 @@
     });
     appload.registerFrameApp("cmdexe", {
       label: "CMD/EXE",
+      iconId: "i-cmd",
       title: "CMD — InkSoC",
       path: "InkSoC/?inkos=1",
       width: 820,
@@ -303,12 +311,16 @@
       multi: true,
     });
     appload.registerNativeApp("monitor", {
+      label: "Monitor",
+      iconId: "i-monitor",
       title: "Monitor de Sistema",
       width: 680,
       height: 500,
       mount: lazyNative("./js/apps/monitor.js", "mountMonitor", "Crie inkos/web/js/apps/monitor.js no repositório."),
     });
     appload.registerNativeApp("settings", {
+      label: "Ajustes",
+      iconId: "i-settings",
       title: "Configurações & Planos de Fundo",
       width: 740,
       height: 500,
