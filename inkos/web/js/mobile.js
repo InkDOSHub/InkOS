@@ -15,6 +15,7 @@ export function initMobileSupport({ doc = document, win = window } = {}) {
   installModifierBar(doc);
   installGestures(doc, win);
   installViewport(doc, win);
+  if (new URLSearchParams(win.location?.search || "").has("touchdebug")) installTouchDebug(doc, win);
 
   // Close rails when tapping elsewhere.
   doc.addEventListener("pointerdown", (e) => {
@@ -138,18 +139,9 @@ export function installGestures(doc = document, win = window) {
   doc.addEventListener("pointerup", end, { passive: true });
   doc.addEventListener("pointercancel", end, { passive: true });
 
-  // Block double-tap zoom on UI chrome, keep it in content.
-  // Only a second tap on the same element counts; quick taps on different
-  // buttons must still click.
-  let lastEnd = 0;
-  let lastTarget = null;
-  doc.addEventListener("touchend", (e) => {
-    if (e.target.closest("input, textarea, select, iframe, .window-body")) return;
-    const now = Date.now();
-    if (now - lastEnd <= 280 && e.target === lastTarget && !e.target.closest("#modifier-bar")) e.preventDefault();
-    lastEnd = now;
-    lastTarget = e.target;
-  }, { passive: false });
+  // Double-tap zoom is turned off in CSS (touch-action: manipulation), which
+  // also removes the click delay. No touchend preventDefault here: on iOS a
+  // cancelled touchend also cancels the click.
 }
 
 export function installViewport(doc = document, win = window) {
@@ -160,10 +152,49 @@ export function installViewport(doc = document, win = window) {
     root.style.setProperty("--kb-inset", `${Math.round(inset)}px`);
     root.style.setProperty("--dpr", String(win.devicePixelRatio || 1));
     root.classList.toggle("kb-open", inset > 80);
+    if (inset <= 80 && (win.scrollX || win.scrollY)) win.scrollTo(0, 0);
   };
+  // iOS can leave the layout viewport scrolled (after the keyboard closes or a
+  // rubber-band). Fixed elements then draw in one place but receive taps in
+  // another. Keep the document at 0,0 unless the keyboard is open.
+  const pin = () => {
+    if (root.classList.contains("kb-open")) return;
+    if (win.scrollX || win.scrollY) win.scrollTo(0, 0);
+  };
+  win.addEventListener("scroll", pin, { passive: true });
+  doc.addEventListener("focusout", () => setTimeout(pin, 50));
   vv?.addEventListener("resize", update);
   vv?.addEventListener("scroll", update);
   win.addEventListener("resize", update);
   win.addEventListener("orientationchange", update);
   update();
+}
+
+// ?touchdebug=1 shows what each tap hits, to diagnose devices we cannot emulate.
+export function installTouchDebug(doc = document, win = window) {
+  const box = doc.createElement("pre");
+  box.id = "touch-debug";
+  box.style.cssText = "position:fixed;left:4px;right:4px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:20000;margin:0;max-height:34vh;overflow:auto;padding:6px;font:10px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.82);color:#9f9;border-radius:8px;pointer-events:none;white-space:pre-wrap;";
+  doc.body.append(box);
+  const lines = [];
+  const name = (el) => {
+    if (!el || el.nodeType !== 1) return String(el);
+    const id = el.id ? "#" + el.id : "";
+    const cls = typeof el.className === "string" && el.className ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+    const txt = (el.textContent || "").trim().slice(0, 14);
+    return `${el.tagName.toLowerCase()}${id}${cls}${txt ? ` "${txt}"` : ""}`;
+  };
+  const log = (e) => {
+    const t = Date.now() % 100000;
+    const at = e.clientX !== undefined ? ` @${Math.round(e.clientX)},${Math.round(e.clientY)}` : "";
+    const hit = e.clientX !== undefined ? doc.elementFromPoint(e.clientX, e.clientY) : null;
+    const pt = e.pointerType ? ` ${e.pointerType}` : "";
+    lines.push(`${t} ${e.type}${pt}${at} → ${name(e.target)}${hit && hit !== e.target ? ` | hit ${name(hit)}` : ""}${e.defaultPrevented ? " [prevented]" : ""}`);
+    while (lines.length > 14) lines.shift();
+    box.textContent = `scroll ${win.scrollX},${win.scrollY} vv ${Math.round(win.visualViewport?.offsetTop || 0)} ${Math.round(win.visualViewport?.height || 0)}/${win.innerHeight}\n` + lines.join("\n");
+  };
+  for (const type of ["pointerdown", "pointerup", "pointercancel", "touchend", "click", "contextmenu"]) {
+    doc.addEventListener(type, (e) => setTimeout(() => log(e), 0), { capture: true, passive: true });
+  }
+  log({ type: "touchdebug on" });
 }

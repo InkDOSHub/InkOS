@@ -116,9 +116,11 @@ html, body {
   gap: 6px;
 }
 
+@media (hover: hover) {
 .top-pill:hover {
   background: var(--surface);
   border-color: var(--border);
+}
 }
 
 .top-pill.active {
@@ -288,15 +290,19 @@ html, body {
   justify-content: center;
 }
 
+@media (hover: hover) {
 .win-btn:hover {
   background: var(--surface-hover);
   border-color: var(--border-strong);
 }
+}
 
+@media (hover: hover) {
 .win-btn.close:hover {
   background: var(--danger);
   border-color: var(--danger);
   color: #fff;
+}
 }
 
 .window-body {
@@ -453,10 +459,12 @@ html, body {
   transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease;
 }
 
+@media (hover: hover) {
 .dock-item:hover {
   transform: translateY(-3px);
   background: var(--surface-hover);
   border-color: var(--border-strong);
+}
 }
 
 .dock-item.running::after {
@@ -552,8 +560,10 @@ html, body {
   transition: filter 0.12s ease, color 0.12s ease;
 }
 
+@media (hover: hover) {
 .mac-lights:hover .mac-light {
   color: rgba(0, 0, 0, 0.72);
+}
 }
 
 .mac-light.close { background: #ff5f57; }
@@ -648,3 +658,8 @@ input, textarea, [contenteditable="true"] { -webkit-touch-callout: default; }
 .ctx-item.danger { color: var(--danger); }
 .ctx-sep { height: 1px; margin: 4px 6px; background: var(--border); }
 .is-touch .ctx-item { min-height: 44px; padding: 10px 14px; font-size: 15px; }
+
+/* Touch: no double-tap zoom (and no click delay); light icons always visible
+   because there is no hover. */
+html { touch-action: manipulation; }
+.is-touch .mac-light { color: rgba(0, 0, 0, 0.72); }
