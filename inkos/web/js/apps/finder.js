@@ -1,5 +1,5 @@
 // Finder — Gerenciador de arquivos da memória interna do InkOS (sem emojis, ícones SVG)
-const svg = (id, size = 16) =>
+const svg = (id, size = 22) =>
   `<svg width="${size}" height="${size}" style="flex:0 0 auto;" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
 
 import { setContextMenu } from "../contextmenu.js";
@@ -82,7 +82,7 @@ export function mountFinder(root, { vfs, openApp, syncTheme }) {
           ? "i-pdf"
           : "i-file";
 
-      card.innerHTML = `${svg(iconId, 28)}<span style="word-break:break-word;">${item.name}</span><span style="font-size:10px;color:var(--muted);">${item.type === "dir" ? "Pasta" : `${item.size} B`}</span>`;
+      card.innerHTML = `${svg(iconId, 48)}<span style="word-break:break-word;">${item.name}</span><span style="font-size:10px;color:var(--muted);">${item.type === "dir" ? "Pasta" : `${item.size} B`}</span>`;
 
       card.onclick = async () => {
         selected = item;

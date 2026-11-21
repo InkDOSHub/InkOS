@@ -1,10 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
   <symbol id="i-apps" viewBox="0 0 512 512"><circle cx="256" cy="256" r="232" fill="#2a2d3a" fill-opacity=".72" stroke="#efe8da" stroke-opacity=".55" stroke-width="12"/><circle cx="166" cy="166" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/><circle cx="166" cy="256" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/><circle cx="166" cy="346" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/><circle cx="256" cy="166" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/><circle cx="256" cy="256" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/><circle cx="256" cy="346" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/><circle cx="346" cy="166" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/><circle cx="346" cy="256" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/><circle cx="346" cy="346" r="30" fill="#efe8da" stroke="#141414" stroke-width="14"/></symbol>
 
-  <symbol id="i-desktop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="4" width="18" height="14" rx="2.5" />
-    <path d="M8 20h8M12 18v2" />
-  </symbol>
+  <symbol id="i-desktop" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#1f9aa8"/><g transform="rotate(-3 256 256)"><rect x="96" y="120" width="320" height="216" rx="26" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M256 336v52M196 392h120" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/></g></symbol>
 
   <symbol id="i-finder" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#3b7be0"/><g transform="rotate(-3 256 256)"><path d="M104 160a24 24 0 0 1 24-24h88l32 32h136a24 24 0 0 1 24 24v168a24 24 0 0 1-24 24H128a24 24 0 0 1-24-24z" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M104 216h304" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/></g></symbol>
 
@@ -14,32 +11,17 @@
 
   <symbol id="i-window" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#4a5568"/><g transform="rotate(-3 256 256)"><rect x="96" y="128" width="320" height="256" rx="30" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M96 190h320" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><circle cx="140" cy="159" r="10" fill="#141414"/><circle cx="174" cy="159" r="10" fill="#141414"/></g></symbol>
 
-  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" />
-  </symbol>
+  <symbol id="i-home" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#2f8f5b"/><g transform="rotate(-3 256 256)"><path d="M112 250L256 126l144 124" fill="none" stroke="#141414" stroke-width="22" stroke-linejoin="round" stroke-linecap="round"/><path d="M148 228v156h216V228" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M226 384v-84h60v84z" fill="#141414" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/></g></symbol>
 
-  <symbol id="i-folder" viewBox="0 0 24 24" fill="none">
-    <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h4l2 2h7A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-11Z" fill="#60a5fa" fill-opacity=".28" stroke="#60a5fa" stroke-width="1.7" />
-  </symbol>
+  <symbol id="i-folder" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#4aa3df"/><g transform="rotate(-3 256 256)"><path d="M104 160a24 24 0 0 1 24-24h88l32 32h136a24 24 0 0 1 24 24v168a24 24 0 0 1-24 24H128a24 24 0 0 1-24-24z" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M104 216h304" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/></g></symbol>
 
-  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" />
-    <path d="M14 3v5h5" />
-  </symbol>
+  <symbol id="i-file" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#3771e5"/><g transform="rotate(-4 256 256)"><path d="M146 104h164l56 56v234h-220z" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M310 104v56h56" fill="none" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M186 190h140" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M186 230h140" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M186 270h140" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M186 310h90" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/></g></symbol>
 
-  <symbol id="i-pdf" viewBox="0 0 24 24" fill="none" stroke="#f38ba8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" fill="#f38ba8" fill-opacity=".16" />
-    <path d="M14 3v5h5M8 14h8M8 17h5" />
-  </symbol>
+  <symbol id="i-pdf" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#bf3232"/><g transform="rotate(-4 256 256)"><path d="M146 104h164l56 56v234h-220z" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M310 104v56h56" fill="none" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M206 330c40-60 56-110 50-150-4-24-30-20-26 6 6 40 50 100 100 120 24 10 34-14 10-18-50-8-110 14-134 42-14 18 0 28 0 0" fill="none" stroke="#c62828" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/></g></symbol>
 
-  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16" />
-  </symbol>
+  <symbol id="i-download" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#7c5cd6"/><g transform="rotate(-3 256 256)"><path d="M120 300v60a24 24 0 0 0 24 24h224a24 24 0 0 0 24-24v-60" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M256 112v176M188 222l68 68 68-68" fill="none" stroke="#efe8da" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/><path d="M256 112v176M188 222l68 68 68-68" fill="none" stroke="#141414" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></g></symbol>
 
-  <symbol id="i-drive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="5" width="18" height="14" rx="2.5" />
-    <path d="M3 13h18M7 16h.01M10 16h.01" />
-  </symbol>
+  <symbol id="i-drive" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#5d6577"/><g transform="rotate(-3 256 256)"><rect x="96" y="176" width="320" height="168" rx="30" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M96 272h320" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><circle cx="360" cy="308" r="14" fill="#44b656" stroke="#141414" stroke-width="8"/><path d="M140 308h120" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/></g></symbol>
 
   <symbol id="i-exe" viewBox="0 0 512 512"><rect x="24" y="24" width="464" height="464" rx="112" fill="#f0a83a"/><g transform="rotate(-3 256 256)"><rect x="88" y="120" width="336" height="272" rx="28" fill="#efe8da" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><path d="M88 172h336" stroke="#141414" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/><circle cx="124" cy="146" r="9" fill="#141414"/><circle cx="154" cy="146" r="9" fill="#141414"/><text x="256" y="318" text-anchor="middle" font-family="ui-rounded, 'SF Pro Rounded', 'Arial Rounded MT Bold', system-ui, sans-serif" font-size="104" font-weight="900" fill="#141414" letter-spacing="-2">.exe</text></g></symbol>
 
