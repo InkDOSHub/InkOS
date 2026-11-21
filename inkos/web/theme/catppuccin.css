@@ -138,58 +138,6 @@ html, body {
   color: var(--muted);
 }
 
-/* Rail lateral de Workspaces */
-.workspace-rail {
-  position: fixed;
-  top: 48px;
-  left: 10px;
-  bottom: 84px;
-  width: 118px;
-  z-index: 800;
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 16px;
-  background: var(--panel);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  overflow-y: auto;
-}
-
-.workspace-rail.open {
-  display: flex;
-}
-
-.ws-card {
-  appearance: none;
-  width: 100%;
-  min-height: 64px;
-  border-radius: 10px;
-  border: 2px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  padding: 8px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  text-align: left;
-  font-size: 11px;
-}
-
-.ws-card.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.ws-count {
-  font-size: 10px;
-  color: var(--muted);
-}
-
 /* Área de trabalho principal */
 .desktop {
   position: fixed;
@@ -741,8 +689,6 @@ html, body { overscroll-behavior: none; }
      modifier bar never covers the focused field. */
   .mods-open .desktop { bottom: calc(132px + var(--kb-inset, 0px)); }
 }
-/* Hub mode (prepared seam, see docs/adr/ADR-modo-hub-desktop.md) */
-[data-mode="hub"] #ws-toggle { display: none; }
 
 /* Context menu (right click, two-finger tap, long press) */
 html { -webkit-touch-callout: none; }

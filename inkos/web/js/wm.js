@@ -1,4 +1,4 @@
-// Gestor de Janelas acelerado por GPU (translate3d) com Workspaces e redimensionamento em 8 direções
+// Gestor de Janelas acelerado por GPU (translate3d) e redimensionamento em 8 direções
 const svgIcon = (id, size = 14) =>
   `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
 
@@ -10,7 +10,6 @@ export class WindowManager {
     this.onChange = onChange || (() => {});
     this.windows = new Map();
     this.zCounter = 10;
-    this.workspace = 1;
     // Keep windows inside the desktop when it changes size (rotation, external
     // monitor, on-screen keyboard, modifier bar).
     if (typeof ResizeObserver === "function") {
@@ -31,15 +30,6 @@ export class WindowManager {
       }
       this._applyGeometry(w);
     }
-  }
-
-  setWorkspace(ws) {
-    this.workspace = Number(ws) || 1;
-    for (const w of this.windows.values()) {
-      const visible = w.workspace === this.workspace && !w.minimized;
-      w.el.style.display = visible ? "flex" : "none";
-    }
-    this._emit();
   }
 
   _applyGeometry(w) {
@@ -70,7 +60,6 @@ export class WindowManager {
       list.push({
         id: w.id,
         title: w.title,
-        workspace: w.workspace,
         minimized: w.minimized,
         maximized: w.maximized,
         focused: w.focused,
@@ -83,12 +72,9 @@ export class WindowManager {
     return list;
   }
 
-  createWindow({ id, title, width = 760, height = 500, x, y, workspace, onClose, renderContent }) {
+  createWindow({ id, title, width = 760, height = 500, x, y, onClose, renderContent }) {
     if (this.windows.has(id)) {
       const existing = this.windows.get(id);
-      if (existing.workspace !== this.workspace) {
-        this.setWorkspace(existing.workspace);
-      }
       existing.minimized = false;
       existing.el.style.display = "flex";
       this.focus(id);
@@ -133,7 +119,6 @@ export class WindowManager {
     const record = {
       id,
       title: title || id,
-      workspace: Number(workspace) || this.workspace,
       x: initX,
       y: initY,
       width: winW,
@@ -175,12 +160,6 @@ export class WindowManager {
     setContextMenu(titlebar, () => [
       { label: "Minimizar", action: () => this.minimize(id) },
       { label: record.maximized ? "Restaurar" : "Maximizar", action: () => this.toggleMaximize(id) },
-      "-",
-      ...[1, 2, 3].map((n) => ({
-        label: `Mover para Workspace ${n}`,
-        disabled: record.workspace === n,
-        action: () => this.moveToWorkspace(id, n),
-      })),
       "-",
       { label: "Fechar", danger: true, action: () => this.close(id) },
     ]);
@@ -298,12 +277,9 @@ export class WindowManager {
   focus(id, { deferEmit = false } = {}) {
     const target = this.windows.get(id);
     if (!target) return;
-    const visible = !target.minimized && target.workspace === this.workspace;
+    const visible = !target.minimized;
     if (deferEmit && target.focused && visible) return;
     target.minimized = false;
-    if (target.workspace !== this.workspace) {
-      this.setWorkspace(target.workspace);
-    }
     target.el.style.display = "flex";
     this.zCounter += 1;
     target.el.style.zIndex = String(this.zCounter);
@@ -317,13 +293,6 @@ export class WindowManager {
     } else {
       this._emit();
     }
-  }
-
-  moveToWorkspace(id, ws) {
-    const target = this.windows.get(id);
-    if (!target) return;
-    target.workspace = Number(ws) || 1;
-    this.setWorkspace(this.workspace);
   }
 
   minimize(id) {

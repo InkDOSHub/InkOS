@@ -97,7 +97,7 @@ for (const name of wanted) {
       assert.ok((await fr.getAttribute("src")).endsWith(path), `${label}: ${await fr.getAttribute("src")}`);
       await page.evaluate((w) => window.inkOS.closeApp(w), id);
     }
-    for (const [label, id] of [["Finder", "finder"], ["Browser", "browser"], ["Monitor", "monitor"], ["Ajustes", "settings"]]) {
+    for (const [label, id] of [["Finder", "finder"], ["Monitor", "monitor"], ["Ajustes", "settings"]]) {
       await dockClick(page, label);
       const win = page.locator(`.window[data-win-id="native-${id}"]`);
       await win.waitFor();
@@ -154,21 +154,7 @@ for (const name of wanted) {
     await ctx.close();
   });
 
-  test(`${name}: workspaces isolate windows`, async (t) => {
-    const b = browsers[name];
-    if (!b) return t.skip();
-    const { ctx, page } = await bootPage(b);
-    await dockClick(page, "Monitor");
-    const win = page.locator('.window[data-win-id="native-monitor"]');
-    await win.waitFor();
-    await inkosMenu(page, "Workspace 2");
-    assert.equal(await win.isVisible(), false);
-    await inkosMenu(page, "Workspace 1");
-    assert.equal(await win.isVisible(), true);
-    await ctx.close();
-  });
-
-  test(`${name}: shell, cmd, finder, browser vfs://`, async (t) => {
+  test(`${name}: shell, cmd, finder`, async (t) => {
     const b = browsers[name];
     if (!b) return t.skip();
     const { ctx, page, errors } = await bootPage(b);
@@ -194,17 +180,6 @@ for (const name of wanted) {
     const exeFrame = page.locator('.window[data-win-id="frame-cmdexe-1"] iframe');
     await exeFrame.waitFor({ state: "attached" });
     assert.match(await exeFrame.getAttribute("src"), /InkSoC\/\?inkos=1&file=1$/);
-
-    await dockClick(page, "Browser");
-    const url = page.locator("#br-url");
-    await url.waitFor();
-    await url.fill("vfs:///Home/e2e/a.txt");
-    await url.press("Enter");
-    await page.waitForTimeout(600);
-    const stage = page.locator("#br-stage");
-    const frame = stage.locator("iframe");
-    const stageText = (await frame.count()) ? await frame.contentFrame().locator("body").innerText() : await stage.innerText();
-    assert.ok(stageText.includes("ola-inkos"), `vfs:// view: ${stageText.slice(0, 120)}`);
 
     await dockClick(page, "Finder");
     await page.locator("#f-list").waitFor();

@@ -16,12 +16,6 @@ export function initMobileSupport({ doc = document, win = window } = {}) {
   installGestures(doc, win);
   installViewport(doc, win);
   if (new URLSearchParams(win.location?.search || "").has("touchdebug")) installTouchDebug(doc, win);
-
-  // Close rails when tapping elsewhere.
-  doc.addEventListener("pointerdown", (e) => {
-    const rail = doc.querySelector("#workspace-rail");
-    if (rail?.classList.contains("open") && !e.target.closest("#workspace-rail, #inkos-menu, .ctx-menu")) rail.classList.remove("open");
-  });
 }
 
 export function installModifierBar(doc = document) {

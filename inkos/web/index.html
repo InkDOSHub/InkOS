@@ -27,20 +27,6 @@
     </div>
   </header>
 
-  <aside id="workspace-rail" class="workspace-rail" aria-label="Workspaces">
-    <button class="ws-card active" data-ws="1" type="button">
-      <strong>Workspace 1</strong>
-      <span class="ws-count" id="ws-count-1">0 janelas</span>
-    </button>
-    <button class="ws-card" data-ws="2" type="button">
-      <strong>Workspace 2</strong>
-      <span class="ws-count" id="ws-count-2">0 janelas</span>
-    </button>
-    <button class="ws-card" data-ws="3" type="button">
-      <strong>Workspace 3</strong>
-      <span class="ws-count" id="ws-count-3">0 janelas</span>
-    </button>
-  </aside>
 
   <main id="desktop" class="desktop" aria-label="InkOS desktop">
     <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
@@ -92,7 +78,6 @@
     updateClock();
     setInterval(updateClock, 15000);
 
-    const wsRail = document.querySelector("#workspace-rail");
 
     const [{ WindowManager }, appload] = await Promise.all([
       import("./js/wm.js"),
@@ -149,7 +134,6 @@
       const pinned = [
         { id: "launcher", label: "Apps", iconId: "i-apps", action: () => toggleLauncher() },
         { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload.openApp("finder", desktopEl) },
-        { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload.openApp("browser", desktopEl) },
         { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload.openApp("shell", desktopEl) },
         { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload.openApp("cmdexe", desktopEl) },
         { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload.openApp("monitor", desktopEl) },
@@ -178,7 +162,7 @@
         dockEl.append(b);
       }
 
-      const openWins = wins.filter((w) => !/^(native-(finder|browser|monitor|settings)|frame-(shell|cmdexe))$/.test(w.id));
+      const openWins = wins.filter((w) => !/^(native-(finder|monitor|settings)|frame-(shell|cmdexe))$/.test(w.id));
       if (openWins.length > 0) {
         const sep = document.createElement("div");
         sep.className = "dock-sep";
@@ -205,14 +189,6 @@
       const active = wins.find((w) => w.focused && !w.minimized);
       const activeEl = document.querySelector("#active-app");
       if (activeEl) activeEl.textContent = active ? active.title.split(" — ")[0] : "";
-
-      for (let i = 1; i <= 3; i++) {
-        const el = document.querySelector(`#ws-count-${i}`);
-        if (el) {
-          const c = wins.filter((x) => x.workspace === i).length;
-          el.textContent = `${c} ${c === 1 ? "janela" : "janelas"}`;
-        }
-      }
     };
 
     wm = new WindowManager(desktopEl, { onChange: renderDock });
@@ -242,13 +218,9 @@
         const r = menuBtn.getBoundingClientRect();
         const dark = document.documentElement.dataset.theme !== "latte";
         const keysOpen = document.documentElement.classList.contains("mods-open");
-        const wsCard = (n) => wsRail.querySelector(`.ws-card[data-ws="${n}"]`);
         cm.openContextMenu(r.left - 4, r.bottom - 2, [
           { label: "Sobre o InkOS", action: () => appload.openApp("monitor", desktopEl) },
           { label: "Ajustes…", action: () => appload.openApp("settings", desktopEl) },
-          "-",
-          ...[1, 2, 3].map((n) => ({ label: `${wm.workspace === n ? "✓ " : ""}Workspace ${n}`, action: () => wsCard(n)?.click() })),
-          { label: "Mostrar workspaces", action: () => wsRail.classList.toggle("open") },
           "-",
           { label: `${keysOpen ? "✓ " : ""}Teclas (Esc, Tab, Ctrl…)`, action: () => document.querySelector("#keys-toggle").click() },
           { label: dark ? "Tema claro" : "Tema escuro", action: () => document.querySelector("#theme-toggle").click() },
@@ -276,14 +248,6 @@
     appload.bindWindowManager(wm);
     renderDock([]);
 
-    wsRail.querySelectorAll(".ws-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        const n = Number(card.dataset.ws || 1);
-        wm.setWorkspace(n);
-        wsRail.querySelectorAll(".ws-card").forEach((c) => c.classList.toggle("active", c === card));
-      });
-    });
-
     const lazyNative = (path, exportName, fallbackMsg) => async (el, ctx) => {
       try {
         const mod = await import(path);
@@ -310,14 +274,6 @@
       width: 820,
       height: 520,
       mount: lazyNative("./js/apps/finder.js", "mountFinder", "Crie inkos/web/js/apps/finder.js no repositório."),
-    });
-    appload.registerNativeApp("browser", {
-      label: "Browser",
-      iconId: "i-browser",
-      title: "InkBrowser",
-      width: 900,
-      height: 600,
-      mount: lazyNative("./js/apps/browser.js", "mountBrowser", "Crie inkos/web/js/apps/browser.js no repositório."),
     });
     appload.registerNativeApp("vfs-shell", {
       label: "Shell InkOS",
