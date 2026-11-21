@@ -18,9 +18,8 @@
       <button id="inkos-menu" class="top-pill inkos-menu-btn" type="button" aria-haspopup="menu" aria-label="Menu InkOS">InkOS</button>
       <span id="active-app" class="active-app"></span>
     </div>
+    <span id="clock" class="topbar-clock">--:--</span>
     <div class="topbar-right">
-      <span id="isolation-badge" class="badge-iso"></span>
-      <span id="clock" style="font-weight:600;">--:--</span>
       <!-- Hidden: driven from the InkOS menu -->
       <button id="keys-toggle" type="button" hidden>Keys</button>
       <button id="theme-toggle" type="button" hidden>Tema</button>
@@ -62,8 +61,6 @@
     const launcherWin = document.querySelector("#launcher-window");
     const launcherGrid = document.querySelector("#app-grid");
     const launcherSearch = document.querySelector("#launcher-search");
-    const badge = document.querySelector("#isolation-badge");
-    badge.textContent = window.crossOriginIsolated ? "SAB • JIT Ativo" : "Modo Compatibilidade";
 
     const svgIcon = (id, size = 20) =>
       `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
@@ -329,8 +326,6 @@
       .then(({ bootKernel }) => bootKernel({ pkgUrl: "../pkg/inkos.js", workerUrl: "./js/swap.worker.js" }))
       .then((booted) => {
         Object.assign(window.inkOS, booted);
-        badge.textContent = booted.diag.profile === "mt" ? "SAB • mt" : "Compat • st";
-        badge.title = booted.diag.profileReason || "crossOriginIsolated + shared memory ok";
         window.dispatchEvent(new CustomEvent("inkos:booted", { detail: booted.diag }));
       })
       .catch((e) => console.error("[InkOS] kernel boot failed:", e));

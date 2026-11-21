@@ -129,13 +129,14 @@ html, body {
   color: var(--accent);
 }
 
-.badge-iso {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--muted);
+/* Clock pinned to the centre of the top bar */
+.topbar-clock {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Área de trabalho principal */
@@ -662,7 +663,7 @@ html, body { overscroll-behavior: none; }
 .is-touch .mac-lights { gap: 22px; margin-right: 14px; }
 @media (max-width: 699px) {
   .topbar { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); gap: 4px; }
-  .lbl-long, .topbar .brand, #isolation-badge { display: none; }
+  .lbl-long, .topbar .brand { display: none; }
   .lbl-short { display: inline; }
   #clock { font-size: 12px; white-space: nowrap; }
   .top-pill { padding: 4px 8px; }
@@ -734,5 +735,5 @@ html { touch-action: manipulation; }
 
 /* InkOS menu at the far left of the top bar (like the Apple menu) */
 .inkos-menu-btn { font-weight: 800; letter-spacing: 0.2px; }
-.active-app { font-weight: 600; font-size: 13px; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.active-app { font-weight: 600; font-size: 13px; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(50vw - 150px); }
 .topbar-right { gap: 10px; }
