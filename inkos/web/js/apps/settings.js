@@ -1,16 +1,17 @@
 // Ajustes do Sistema + Planos de Fundo + Sessão Criptografada do InkOS (persistente)
 const STORAGE_KEY = "inkos-prefs-v1";
+export const DEFAULT_WALLPAPER = "sonoma-horizon";
 
 export const WALLPAPERS = [
-  {
-    id: "cosmic-dusk",
-    name: "InkOS Dusk",
-    css: "radial-gradient(circle at 18% 18%, #262238 0%, transparent 52%), radial-gradient(circle at 82% 82%, #132235 0%, transparent 58%), #101016",
-  },
   {
     id: "sonoma-horizon",
     name: "Sonoma Horizon",
     css: "linear-gradient(135deg, #1b2845 0%, #3b2d5e 45%, #8f4f4a 85%, #d98a5f 100%)",
+  },
+  {
+    id: "cosmic-dusk",
+    name: "InkOS Dusk",
+    css: "radial-gradient(circle at 18% 18%, #262238 0%, transparent 52%), radial-gradient(circle at 82% 82%, #132235 0%, transparent 58%), #101016",
   },
   {
     id: "sequoia-pine",
@@ -69,8 +70,8 @@ export function applyPrefs(prefs = loadPrefs()) {
   }
   if (prefs.customWallpaperUrl) {
     document.body.style.background = `url("${prefs.customWallpaperUrl}") center / cover no-repeat fixed`;
-  } else if (prefs.wallpaperCss) {
-    document.body.style.background = prefs.wallpaperCss;
+  } else {
+    document.body.style.background = prefs.wallpaperCss || WALLPAPERS.find((w) => w.id === DEFAULT_WALLPAPER).css;
   }
   const dock = document.querySelector("#dock");
   if (dock && prefs.dockScale) {
@@ -124,7 +125,7 @@ export async function mountSettings(root, { vfs, syncTheme }) {
       `;
       const grid = body.querySelector("#wp-grid");
       for (const wp of WALLPAPERS) {
-        const active = !prefs.customWallpaperUrl && prefs.wallpaperId === wp.id;
+        const active = !prefs.customWallpaperUrl && (prefs.wallpaperId || DEFAULT_WALLPAPER) === wp.id;
         const card = document.createElement("button");
         card.type = "button";
         card.style.cssText = `appearance:none;cursor:pointer;border:2px solid ${active ? "var(--accent)" : "var(--border)"};border-radius:12px;padding:6px;background:var(--surface);color:var(--text);text-align:left;display:flex;flex-direction:column;gap:6px;`;
