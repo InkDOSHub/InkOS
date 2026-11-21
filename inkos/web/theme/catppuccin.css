@@ -458,7 +458,7 @@ html, body {
 .dock-item.running::after {
   content: "";
   position: absolute;
-  bottom: 2px;
+  bottom: -5px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -479,8 +479,10 @@ html, body {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-.dock-item { min-width: 48px; width: 48px; padding: 0; border-radius: 13px; }
-.dock-item svg { width: 26px; height: 26px; }
+.dock-item { min-width: 48px; width: 48px; padding: 0; border-radius: 13px; background: transparent; }
+/* InkDOS app icons: the icon is the whole tile, as in the Hub */
+.dock-item svg { width: 44px; height: 44px; }
+.dock-item.focused, .dock-item:hover { background: transparent; border-color: transparent; }
 @media (hover: hover) {
   .dock-item[data-label]:hover::before {
     content: attr(data-label);
@@ -516,7 +518,7 @@ html, body {
   height: calc(48px * var(--mag));
   transition: width .09s ease-out, min-width .09s ease-out, height .09s ease-out, background .14s ease;
 }
-.dock-magnify .dock-item svg { width: calc(26px * var(--mag)); height: calc(26px * var(--mag)); }
+.dock-magnify .dock-item svg { width: calc(44px * var(--mag)); height: calc(44px * var(--mag)); }
 @media (hover: hover) {
   .dock-magnify .dock-item:hover { transform: none; }
 }
