@@ -12,14 +12,13 @@ Sistema operacional web experimental em **Rust / WebAssembly** com interface des
 ## Recursos Principais
 
 - **Kernel & Runtime WebAssembly (`InkSoC`):** compilado em Rust (`wasm32-unknown-unknown`) com suporte a `SharedArrayBuffer` e isolamento de origem (`Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`).
-- **Gerenciador de Janelas (`WindowManager`):** janelas arrastáveis, redimensionáveis em 8 direções, botões de semáforo estilo macOS (fechar, minimizar, maximizar) e múltiplos **Workspaces**. A janela de um programa Windows se ajusta ao tamanho da janela dele.
+- **Gerenciador de Janelas (`WindowManager`):** janelas arrastáveis, redimensionáveis em 8 direções, botões de semáforo estilo macOS (fechar, minimizar, maximizar). A janela de um programa Windows se ajusta ao tamanho da janela dele.
 - **Dock estilo macOS:** ícones ampliam ao passar o mouse, nome em balão, pulo ao abrir e um ícone por janela aberta.
 - **Aplicativos:** lista como a do Windows/macOS, em três seções: InkOS, Programas Windows (os instalados no drive C:) e InkDOS Hub. Tem busca.
-- **Menu InkOS:** Sobre, Ajustes, Workspaces, Teclas, Tema, Tela cheia, Recarregar e **Voltar ao InkDOS Hub**.
+- **Menu InkOS:** Sobre, Ajustes, Tema, Recarregar e **Voltar ao InkDOS Hub**.
 - **Sistema de Arquivos Virtual (`VFS`):** armazenamento persistente no navegador via **OPFS** / **IndexedDB** integrado ao **Finder** e aos aplicativos do **InkDOS Hub**.
 - **Aplicativos Nativos:**
   - **Finder:** gerenciamento de pastas/arquivos, importação/exportação e envio direto de arquivos para os apps do Hub.
-  - **InkBrowser:** navegação web e visualização de arquivos internos via protocolo `vfs://`.
   - **Terminal:** Alpine Linux de verdade (InkShell, no motor InkSoC), com `apk` e internet.
   - **CMD/EXE:** `cmd.exe` e programas `.exe`/`.msi` no motor InkSoC; cada programa ganha sua janela. Arquivos grandes (instaladores de centenas de MB) vão do Finder ao motor sem serem copiados para a memória.
   - **Shell InkOS:** comandos do VFS, sessões `.inkos` e ferramentas de arquivo (Apps → Shell InkOS).

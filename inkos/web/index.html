@@ -18,29 +18,13 @@
       <button id="inkos-menu" class="top-pill inkos-menu-btn" type="button" aria-haspopup="menu" aria-label="Menu InkOS">InkOS</button>
       <span id="active-app" class="active-app"></span>
     </div>
+    <span id="clock" class="topbar-clock">--:--</span>
     <div class="topbar-right">
-      <span id="isolation-badge" class="badge-iso"></span>
-      <span id="clock" style="font-weight:600;">--:--</span>
       <!-- Hidden: driven from the InkOS menu -->
-      <button id="keys-toggle" type="button" hidden>Keys</button>
       <button id="theme-toggle" type="button" hidden>Tema</button>
     </div>
   </header>
 
-  <aside id="workspace-rail" class="workspace-rail" aria-label="Workspaces">
-    <button class="ws-card active" data-ws="1" type="button">
-      <strong>Workspace 1</strong>
-      <span class="ws-count" id="ws-count-1">0 janelas</span>
-    </button>
-    <button class="ws-card" data-ws="2" type="button">
-      <strong>Workspace 2</strong>
-      <span class="ws-count" id="ws-count-2">0 janelas</span>
-    </button>
-    <button class="ws-card" data-ws="3" type="button">
-      <strong>Workspace 3</strong>
-      <span class="ws-count" id="ws-count-3">0 janelas</span>
-    </button>
-  </aside>
 
   <main id="desktop" class="desktop" aria-label="InkOS desktop">
     <canvas id="framebuffer" aria-label="Desktop framebuffer"></canvas>
@@ -54,17 +38,6 @@
     </section>
   </main>
 
-  <aside id="modifier-bar" class="modifier-bar" aria-label="Teclas modificadoras">
-    <button data-key="Escape" type="button">Esc</button>
-    <button data-key="Tab" type="button">Tab</button>
-    <button data-key="Control" type="button">Ctrl</button>
-    <button data-key="Alt" type="button">Opt</button>
-    <button data-key="Meta" type="button">Cmd</button>
-    <button data-key="ArrowLeft" type="button">←</button>
-    <button data-key="ArrowDown" type="button">↓</button>
-    <button data-key="ArrowUp" type="button">↑</button>
-    <button data-key="ArrowRight" type="button">→</button>
-  </aside>
 
   <div class="dock-wrap">
     <nav id="dock" class="dock" aria-label="Dock de aplicativos"></nav>
@@ -76,8 +49,6 @@
     const launcherWin = document.querySelector("#launcher-window");
     const launcherGrid = document.querySelector("#app-grid");
     const launcherSearch = document.querySelector("#launcher-search");
-    const badge = document.querySelector("#isolation-badge");
-    badge.textContent = window.crossOriginIsolated ? "SAB • JIT Ativo" : "Modo Compatibilidade";
 
     const svgIcon = (id, size = 20) =>
       `<svg width="${size}" height="${size}" aria-hidden="true"><use href="./icons.svg#${id}"></use></svg>`;
@@ -92,7 +63,6 @@
     updateClock();
     setInterval(updateClock, 15000);
 
-    const wsRail = document.querySelector("#workspace-rail");
 
     const [{ WindowManager }, appload] = await Promise.all([
       import("./js/wm.js"),
@@ -149,7 +119,6 @@
       const pinned = [
         { id: "launcher", label: "Apps", iconId: "i-apps", action: () => toggleLauncher() },
         { id: "finder", label: "Finder", iconId: "i-finder", action: () => appload.openApp("finder", desktopEl) },
-        { id: "browser", label: "Browser", iconId: "i-browser", action: () => appload.openApp("browser", desktopEl) },
         { id: "shell", label: "Terminal", iconId: "i-terminal", action: () => appload.openApp("shell", desktopEl) },
         { id: "cmdexe", label: "CMD/EXE", iconId: "i-cmd", action: () => appload.openApp("cmdexe", desktopEl) },
         { id: "monitor", label: "Monitor", iconId: "i-monitor", action: () => appload.openApp("monitor", desktopEl) },
@@ -176,9 +145,15 @@
           }
         };
         dockEl.append(b);
+        if (p.id === "launcher") {
+          b.classList.add("dock-launcher");
+          const sep = document.createElement("div");
+          sep.className = "dock-sep";
+          dockEl.append(sep);
+        }
       }
 
-      const openWins = wins.filter((w) => !/^(native-(finder|browser|monitor|settings)|frame-(shell|cmdexe))$/.test(w.id));
+      const openWins = wins.filter((w) => !/^(native-(finder|monitor|settings)|frame-(shell|cmdexe))$/.test(w.id));
       if (openWins.length > 0) {
         const sep = document.createElement("div");
         sep.className = "dock-sep";
@@ -205,14 +180,6 @@
       const active = wins.find((w) => w.focused && !w.minimized);
       const activeEl = document.querySelector("#active-app");
       if (activeEl) activeEl.textContent = active ? active.title.split(" — ")[0] : "";
-
-      for (let i = 1; i <= 3; i++) {
-        const el = document.querySelector(`#ws-count-${i}`);
-        if (el) {
-          const c = wins.filter((x) => x.workspace === i).length;
-          el.textContent = `${c} ${c === 1 ? "janela" : "janelas"}`;
-        }
-      }
     };
 
     wm = new WindowManager(desktopEl, { onChange: renderDock });
@@ -232,30 +199,16 @@
           { label: "Ajustes", action: open("settings") },
         ];
       });
-      const toggleFullscreen = () => {
-        const d = document, el = d.documentElement;
-        if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
-        else (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: "hide" });
-      };
       const menuBtn = document.querySelector("#inkos-menu");
       menuBtn.addEventListener("click", () => {
         const r = menuBtn.getBoundingClientRect();
         const dark = document.documentElement.dataset.theme !== "latte";
-        const keysOpen = document.documentElement.classList.contains("mods-open");
-        const wsCard = (n) => wsRail.querySelector(`.ws-card[data-ws="${n}"]`);
         cm.openContextMenu(r.left - 4, r.bottom - 2, [
           { label: "Sobre o InkOS", action: () => appload.openApp("monitor", desktopEl) },
           { label: "Ajustes…", action: () => appload.openApp("settings", desktopEl) },
           "-",
-          ...[1, 2, 3].map((n) => ({ label: `${wm.workspace === n ? "✓ " : ""}Workspace ${n}`, action: () => wsCard(n)?.click() })),
-          { label: "Mostrar workspaces", action: () => wsRail.classList.toggle("open") },
-          "-",
-          { label: `${keysOpen ? "✓ " : ""}Teclas (Esc, Tab, Ctrl…)`, action: () => document.querySelector("#keys-toggle").click() },
           { label: dark ? "Tema claro" : "Tema escuro", action: () => document.querySelector("#theme-toggle").click() },
           "-",
-          ...(document.fullscreenEnabled || document.webkitFullscreenEnabled
-            ? [{ label: document.fullscreenElement || document.webkitFullscreenElement ? "Sair da tela cheia" : "Tela cheia", action: () => toggleFullscreen() }]
-            : [{ label: "Tela cheia: Compartilhar → Adicionar à Tela de Início", disabled: true }]),
           { label: "Recarregar InkOS", action: () => location.reload() },
           "-",
           { label: "Voltar ao InkDOS Hub", action: () => location.assign(appload.hubBase()) },
@@ -275,14 +228,6 @@
     import("./js/mobile.js").then((m) => m.initMobileSupport?.()).catch((e) => console.warn("[InkOS] mobile.js:", e));
     appload.bindWindowManager(wm);
     renderDock([]);
-
-    wsRail.querySelectorAll(".ws-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        const n = Number(card.dataset.ws || 1);
-        wm.setWorkspace(n);
-        wsRail.querySelectorAll(".ws-card").forEach((c) => c.classList.toggle("active", c === card));
-      });
-    });
 
     const lazyNative = (path, exportName, fallbackMsg) => async (el, ctx) => {
       try {
@@ -310,14 +255,6 @@
       width: 820,
       height: 520,
       mount: lazyNative("./js/apps/finder.js", "mountFinder", "Crie inkos/web/js/apps/finder.js no repositório."),
-    });
-    appload.registerNativeApp("browser", {
-      label: "Browser",
-      iconId: "i-browser",
-      title: "InkBrowser",
-      width: 900,
-      height: 600,
-      mount: lazyNative("./js/apps/browser.js", "mountBrowser", "Crie inkos/web/js/apps/browser.js no repositório."),
     });
     appload.registerNativeApp("vfs-shell", {
       label: "Shell InkOS",
@@ -373,8 +310,6 @@
       .then(({ bootKernel }) => bootKernel({ pkgUrl: "../pkg/inkos.js", workerUrl: "./js/swap.worker.js" }))
       .then((booted) => {
         Object.assign(window.inkOS, booted);
-        badge.textContent = booted.diag.profile === "mt" ? "SAB • mt" : "Compat • st";
-        badge.title = booted.diag.profileReason || "crossOriginIsolated + shared memory ok";
         window.dispatchEvent(new CustomEvent("inkos:booted", { detail: booted.diag }));
       })
       .catch((e) => console.error("[InkOS] kernel boot failed:", e));

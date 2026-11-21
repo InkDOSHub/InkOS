@@ -144,7 +144,7 @@ export function mountMonitor(root, { wm, vfs, closeApp }) {
       row.innerHTML = `
         <div style="min-width:0;flex:1;">
           <strong>${w.title}</strong>
-          <span style="color:var(--muted);margin-left:6px;">(${kind} • WS ${w.workspace}${w.minimized ? " • Minimizada" : ""})</span>
+          <span style="color:var(--muted);margin-left:6px;">(${kind}${w.minimized ? " • Minimizada" : ""})</span>
         </div>
         <div style="display:flex;gap:6px;">
           <button data-act="focus" type="button" class="top-pill">Focar</button>

@@ -129,65 +129,14 @@ html, body {
   color: var(--accent);
 }
 
-.badge-iso {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--muted);
-}
-
-/* Rail lateral de Workspaces */
-.workspace-rail {
-  position: fixed;
-  top: 48px;
-  left: 10px;
-  bottom: 84px;
-  width: 118px;
-  z-index: 800;
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 16px;
-  background: var(--panel);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  overflow-y: auto;
-}
-
-.workspace-rail.open {
-  display: flex;
-}
-
-.ws-card {
-  appearance: none;
-  width: 100%;
-  min-height: 64px;
-  border-radius: 10px;
-  border: 2px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  padding: 8px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  text-align: left;
-  font-size: 11px;
-}
-
-.ws-card.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.ws-count {
-  font-size: 10px;
-  color: var(--muted);
+/* Clock pinned to the centre of the top bar */
+.topbar-clock {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* Área de trabalho principal */
@@ -441,38 +390,6 @@ html, body {
   color: var(--muted);
 }
 
-/* Barra de modificadores */
-.modifier-bar {
-  position: fixed;
-  left: 50%;
-  bottom: 72px;
-  transform: translateX(-50%);
-  z-index: 750;
-  display: none;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 12px;
-  background: var(--panel);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
-}
-
-.modifier-bar.open {
-  display: flex;
-}
-
-.modifier-bar button {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
 /* Dock flutuante real */
 .dock-wrap {
   position: fixed;
@@ -541,7 +458,7 @@ html, body {
 .dock-item.running::after {
   content: "";
   position: absolute;
-  bottom: 2px;
+  bottom: -5px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -562,8 +479,10 @@ html, body {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-.dock-item { min-width: 48px; width: 48px; padding: 0; border-radius: 13px; }
-.dock-item svg { width: 26px; height: 26px; }
+.dock-item { min-width: 48px; width: 48px; padding: 0; border-radius: 13px; background: transparent; }
+/* InkDOS app icons: the icon is the whole tile, as in the Hub */
+.dock-item svg { width: 44px; height: 44px; }
+.dock-item.focused, .dock-item:hover { background: transparent; border-color: transparent; }
 @media (hover: hover) {
   .dock-item[data-label]:hover::before {
     content: attr(data-label);
@@ -599,7 +518,7 @@ html, body {
   height: calc(48px * var(--mag));
   transition: width .09s ease-out, min-width .09s ease-out, height .09s ease-out, background .14s ease;
 }
-.dock-magnify .dock-item svg { width: calc(26px * var(--mag)); height: calc(26px * var(--mag)); }
+.dock-magnify .dock-item svg { width: calc(44px * var(--mag)); height: calc(44px * var(--mag)); }
 @media (hover: hover) {
   .dock-magnify .dock-item:hover { transform: none; }
 }
@@ -699,22 +618,16 @@ html, body {
 
 /* ---- Touch / mobile (E2.3) ---- */
 .lbl-short { display: none; }
-.modifier-bar {
-  bottom: calc(72px + var(--kb-inset, 0px));
-}
-.modifier-bar button.mod-on { background: var(--accent-soft); border-color: var(--accent); }
-.modifier-bar button.mod-lock { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .window-body { touch-action: pan-x pan-y; overscroll-behavior: contain; }
 html, body { overscroll-behavior: none; }
 .is-touch .top-pill,
-.is-touch .modifier-bar button,
 .is-touch .dock-item { min-height: 44px; min-width: 44px; }
 .is-touch .mac-light { position: relative; width: 16px; height: 16px; }
 .is-touch .mac-light::after { content: ""; position: absolute; inset: -14px; }
 .is-touch .mac-lights { gap: 22px; margin-right: 14px; }
 @media (max-width: 699px) {
   .topbar { padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); gap: 4px; }
-  .lbl-long, .topbar .brand, #isolation-badge { display: none; }
+  .lbl-long, .topbar .brand { display: none; }
   .lbl-short { display: inline; }
   #clock { font-size: 12px; white-space: nowrap; }
   .top-pill { padding: 4px 8px; }
@@ -726,23 +639,9 @@ html, body { overscroll-behavior: none; }
 }
 .is-touch .topbar { height: auto; min-height: 52px; padding-top: 4px; padding-bottom: 4px; }
 @media (max-width: 699px) {
-  .modifier-bar {
-    left: 8px; right: 8px; transform: none;
-    flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
-    bottom: calc(72px + var(--kb-inset, 0px)); margin-bottom: 0;
-  }
-  .modifier-bar button { flex: 0 0 auto; }
   .kb-open .dock-wrap { display: none; }
-  .kb-open .modifier-bar { bottom: calc(4px + var(--kb-inset, 0px)); }
 }
 .is-touch .desktop { top: 52px; }
-@media (max-width: 699px) {
-  /* The desktop (and its windows, via WindowManager.fitAll) shrinks so the
-     modifier bar never covers the focused field. */
-  .mods-open .desktop { bottom: calc(132px + var(--kb-inset, 0px)); }
-}
-/* Hub mode (prepared seam, see docs/adr/ADR-modo-hub-desktop.md) */
-[data-mode="hub"] #ws-toggle { display: none; }
 
 /* Context menu (right click, two-finger tap, long press) */
 html { -webkit-touch-callout: none; }
@@ -788,5 +687,5 @@ html { touch-action: manipulation; }
 
 /* InkOS menu at the far left of the top bar (like the Apple menu) */
 .inkos-menu-btn { font-weight: 800; letter-spacing: 0.2px; }
-.active-app { font-weight: 600; font-size: 13px; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.active-app { font-weight: 600; font-size: 13px; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(50vw - 150px); }
 .topbar-right { gap: 10px; }

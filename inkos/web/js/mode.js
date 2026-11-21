@@ -1,5 +1,5 @@
 // Single decision point for the layout mode (docs/adr/ADR-modo-hub-desktop.md).
-// "desktop": windows, dock, workspaces (default).
+// "desktop": windows, dock (default).
 // "hub": the Hub's app grid is the home screen; apps still open as windows.
 export const MODES = ["desktop", "hub"];
 const KEY = "inkos-mode";
