@@ -21,7 +21,6 @@
     <span id="clock" class="topbar-clock">--:--</span>
     <div class="topbar-right">
       <!-- Hidden: driven from the InkOS menu -->
-      <button id="keys-toggle" type="button" hidden>Keys</button>
       <button id="theme-toggle" type="button" hidden>Tema</button>
     </div>
   </header>
@@ -39,17 +38,6 @@
     </section>
   </main>
 
-  <aside id="modifier-bar" class="modifier-bar" aria-label="Teclas modificadoras">
-    <button data-key="Escape" type="button">Esc</button>
-    <button data-key="Tab" type="button">Tab</button>
-    <button data-key="Control" type="button">Ctrl</button>
-    <button data-key="Alt" type="button">Opt</button>
-    <button data-key="Meta" type="button">Cmd</button>
-    <button data-key="ArrowLeft" type="button">←</button>
-    <button data-key="ArrowDown" type="button">↓</button>
-    <button data-key="ArrowUp" type="button">↑</button>
-    <button data-key="ArrowRight" type="button">→</button>
-  </aside>
 
   <div class="dock-wrap">
     <nav id="dock" class="dock" aria-label="Dock de aplicativos"></nav>
@@ -205,26 +193,16 @@
           { label: "Ajustes", action: open("settings") },
         ];
       });
-      const toggleFullscreen = () => {
-        const d = document, el = d.documentElement;
-        if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
-        else (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: "hide" });
-      };
       const menuBtn = document.querySelector("#inkos-menu");
       menuBtn.addEventListener("click", () => {
         const r = menuBtn.getBoundingClientRect();
         const dark = document.documentElement.dataset.theme !== "latte";
-        const keysOpen = document.documentElement.classList.contains("mods-open");
         cm.openContextMenu(r.left - 4, r.bottom - 2, [
           { label: "Sobre o InkOS", action: () => appload.openApp("monitor", desktopEl) },
           { label: "Ajustes…", action: () => appload.openApp("settings", desktopEl) },
           "-",
-          { label: `${keysOpen ? "✓ " : ""}Teclas (Esc, Tab, Ctrl…)`, action: () => document.querySelector("#keys-toggle").click() },
           { label: dark ? "Tema claro" : "Tema escuro", action: () => document.querySelector("#theme-toggle").click() },
           "-",
-          ...(document.fullscreenEnabled || document.webkitFullscreenEnabled
-            ? [{ label: document.fullscreenElement || document.webkitFullscreenElement ? "Sair da tela cheia" : "Tela cheia", action: () => toggleFullscreen() }]
-            : [{ label: "Tela cheia: Compartilhar → Adicionar à Tela de Início", disabled: true }]),
           { label: "Recarregar InkOS", action: () => location.reload() },
           "-",
           { label: "Voltar ao InkDOS Hub", action: () => location.assign(appload.hubBase()) },

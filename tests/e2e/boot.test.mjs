@@ -350,20 +350,6 @@ for (const name of wanted) {
       assert.equal(small, 0, `${dev}: dock targets < 44px`);
       const topOverflow = await page.$eval(".topbar", (el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1);
       assert.equal(topOverflow, false, `${dev}: topbar overflows`);
-      // modifier bar: arrow key reaches the focused shell input; Ctrl sticky / lock
-      await page.evaluate(() => window.inkOS.openApp("vfs-shell"));
-      const sh = page.locator("#sh-in");
-      await sh.waitFor();
-      await sh.fill("pwd");
-      await sh.press("Enter");
-      await inkosMenu(page, "Teclas", { tap: true });
-      await page.tap('#modifier-bar button[data-key="ArrowUp"]');
-      assert.equal(await sh.inputValue(), "pwd", `${dev}: ArrowUp from modifier bar`);
-      const ctrl = page.locator('#modifier-bar button[data-key="Control"]');
-      await ctrl.tap();
-      assert.match(await ctrl.getAttribute("class") || "", /mod-on/);
-      await ctrl.tap();
-      await ctrl.tap();
       await page.waitForTimeout(50);
       await page.screenshot({ path: `${SHOTS}/${name}-${dev.replace(/\s+/g, "-")}.png` });
       assert.deepEqual(errors, []);

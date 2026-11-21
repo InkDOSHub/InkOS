@@ -11,7 +11,7 @@ export class WindowManager {
     this.windows = new Map();
     this.zCounter = 10;
     // Keep windows inside the desktop when it changes size (rotation, external
-    // monitor, on-screen keyboard, modifier bar).
+    // monitor, on-screen keyboard).
     if (typeof ResizeObserver === "function") {
       new ResizeObserver(() => this.fitAll()).observe(desktopEl);
     }

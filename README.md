@@ -15,7 +15,7 @@ Sistema operacional web experimental em **Rust / WebAssembly** com interface des
 - **Gerenciador de Janelas (`WindowManager`):** janelas arrastáveis, redimensionáveis em 8 direções, botões de semáforo estilo macOS (fechar, minimizar, maximizar). A janela de um programa Windows se ajusta ao tamanho da janela dele.
 - **Dock estilo macOS:** ícones ampliam ao passar o mouse, nome em balão, pulo ao abrir e um ícone por janela aberta.
 - **Aplicativos:** lista como a do Windows/macOS, em três seções: InkOS, Programas Windows (os instalados no drive C:) e InkDOS Hub. Tem busca.
-- **Menu InkOS:** Sobre, Ajustes, Teclas, Tema, Tela cheia, Recarregar e **Voltar ao InkDOS Hub**.
+- **Menu InkOS:** Sobre, Ajustes, Tema, Recarregar e **Voltar ao InkDOS Hub**.
 - **Sistema de Arquivos Virtual (`VFS`):** armazenamento persistente no navegador via **OPFS** / **IndexedDB** integrado ao **Finder** e aos aplicativos do **InkDOS Hub**.
 - **Aplicativos Nativos:**
   - **Finder:** gerenciamento de pastas/arquivos, importação/exportação e envio direto de arquivos para os apps do Hub.

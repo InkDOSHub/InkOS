@@ -2,90 +2,14 @@
 // - Trackpad-style gestures (Pointer Events): tap = click (native), two-finger
 //   scroll (native, touch-action pan inside windows), two-finger tap =
 //   right click (contextmenu), long press = right click on touch.
-// - Modifier bar: Esc, Tab, Ctrl, Opt, Cmd, arrows. Ctrl/Opt/Cmd are sticky
-//   (one tap = next key only, double tap = lock). Keys go to the focused field.
-// - visualViewport: --kb-inset follows the on-screen keyboard so the modifier
-//   bar stays above it.
-
-const MODS = { Control: "ctrlKey", Alt: "altKey", Meta: "metaKey" };
+// - visualViewport: --kb-inset follows the on-screen keyboard.
 
 export function initMobileSupport({ doc = document, win = window } = {}) {
   const isTouch = "ontouchstart" in win || (win.navigator?.maxTouchPoints || 0) > 0;
   doc.documentElement.classList.toggle("is-touch", Boolean(isTouch));
-  installModifierBar(doc);
   installGestures(doc, win);
   installViewport(doc, win);
   if (new URLSearchParams(win.location?.search || "").has("touchdebug")) installTouchDebug(doc, win);
-}
-
-export function installModifierBar(doc = document) {
-  const bar = doc.querySelector("#modifier-bar");
-  if (!bar || bar.dataset.ready) return null;
-  bar.dataset.ready = "1";
-  const state = { Control: 0, Alt: 0, Meta: 0 }; // 0 off, 1 one-shot, 2 locked
-  const lastTap = {};
-  let lastField = null;
-
-  doc.addEventListener("focusin", (e) => {
-    if (e.target.matches?.("input, textarea, [contenteditable='true']")) lastField = e.target;
-  });
-
-  const paint = () => {
-    for (const btn of bar.querySelectorAll("button[data-key]")) {
-      const s = state[btn.dataset.key];
-      btn.classList.toggle("mod-on", s === 1);
-      btn.classList.toggle("mod-lock", s === 2);
-      if (s !== undefined) btn.setAttribute("aria-pressed", s ? "true" : "false");
-    }
-  };
-
-  // Keep focus in the text field while tapping bar buttons.
-  bar.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("button")) e.preventDefault();
-  });
-
-  bar.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-key]");
-    if (!btn) return;
-    const key = btn.dataset.key;
-    if (key in state) {
-      const now = Date.now();
-      const dbl = now - (lastTap[key] || 0) < 350;
-      lastTap[key] = now;
-      state[key] = dbl ? 2 : state[key] ? 0 : 1;
-      paint();
-      return;
-    }
-    const target = doc.activeElement?.matches?.("input, textarea") ? doc.activeElement : lastField;
-    if (!target) return;
-    target.focus();
-    const init = { key, bubbles: true, cancelable: true };
-    for (const [m, prop] of Object.entries(MODS)) if (state[m]) init[prop] = true;
-    const ev = new KeyboardEvent("keydown", init);
-    const notCancelled = target.dispatchEvent(ev);
-    if (notCancelled && key === "Tab" && "value" in target) {
-      const { selectionStart: s, selectionEnd: en, value } = target;
-      target.value = value.slice(0, s) + "\t" + value.slice(en);
-      target.selectionStart = target.selectionEnd = s + 1;
-    }
-    for (const m of Object.keys(state)) if (state[m] === 1) state[m] = 0;
-    paint();
-  });
-
-  // Physical keys also consume one-shot modifiers.
-  doc.addEventListener("keydown", (e) => {
-    if (!e.isTrusted) return;
-    let changed = false;
-    for (const m of Object.keys(state)) if (state[m] === 1) { state[m] = 0; changed = true; }
-    if (changed) paint();
-  }, true);
-
-  doc.querySelector("#keys-toggle")?.addEventListener("click", () => {
-    const open = bar.classList.toggle("open");
-    doc.documentElement.classList.toggle("mods-open", open);
-  });
-  paint();
-  return state;
 }
 
 export function installGestures(doc = document, win = window) {
