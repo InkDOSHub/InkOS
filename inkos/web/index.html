@@ -145,6 +145,12 @@
           }
         };
         dockEl.append(b);
+        if (p.id === "launcher") {
+          b.classList.add("dock-launcher");
+          const sep = document.createElement("div");
+          sep.className = "dock-sep";
+          dockEl.append(sep);
+        }
       }
 
       const openWins = wins.filter((w) => !/^(native-(finder|monitor|settings)|frame-(shell|cmdexe))$/.test(w.id));
