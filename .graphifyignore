@@ -1,0 +1,8 @@
+vendor/
+graphify-out/
+*.wasm
+*.tar
+*.tar.gz
+*.min.js
+*.min.mjs
+*.map
